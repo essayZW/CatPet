@@ -144,8 +144,12 @@ public sealed class PetPlayer
     /// <summary>被摸头：Touch_Head 的 A → B → C（蹭手）。</summary>
     public Task PlayTouchHeadAsync() => PlayChainAsync(GraphType.Touch_Head, 2);
 
-    /// <summary>打盹：Sleep 的 A → B(若干轮) → C，结束后自动回待机。</summary>
-    public Task PlaySleepAsync() => PlayChainAsync(GraphType.Sleep, 6);
+    /// <summary>
+    /// 打盹：Sleep 的 A → B(若干轮) → C，然后**停在睡姿循环**（不回待机）。
+    /// 不能回待机：`_asleep` 要等用户点击才清，而回待机会让画面看起来只是普通待机，
+    /// 于是"打盹中但不像睡着"+ 跟随/小动作全被 `_asleep` 挡住 = 看起来像卡死。
+    /// </summary>
+    public Task PlaySleepAsync() => PlayChainAsync(GraphType.Sleep, 6, endWithIdle: false);
 
     /// <summary>打哈欠：一次性动画。</summary>
     public Task PlayYawnAsync()
@@ -184,23 +188,24 @@ public sealed class PetPlayer
 
     // ------------------------------------------------------------ 内部实现
 
-    private Task PlayChainAsync(GraphType type, int loopCycles)
+    private Task PlayChainAsync(GraphType type, int loopCycles, bool endWithIdle = true)
         => RunExclusive(async ct =>
         {
             var set = _book.FindSet(type, Mode);
 
             if (set.Single is not null && set.A is null && set.B is null && set.C is null)
             {
-                await PlayAsync(set.Single, 1, ct);
-                await PlayIdleInner(ct);
+                // endWithIdle=false：播完停在最后一段循环（打盹用，保持睡姿）
+                await PlayAsync(set.Single, endWithIdle ? 1 : -1, ct);
+                if (endWithIdle) await PlayIdleInner(ct);
                 return;
             }
 
             if (set.A is not null) await PlayAsync(set.A, 1, ct);
             if (set.B is not null) await PlayAsync(set.B, loopCycles, ct);
-            if (set.C is not null) await PlayAsync(set.C, 1, ct);
+            if (set.C is not null) await PlayAsync(set.C, endWithIdle ? 1 : -1, ct);
 
-            await PlayIdleInner(ct);
+            if (endWithIdle) await PlayIdleInner(ct);
         });
 
     private async Task PlayIdleInner(CancellationToken ct)

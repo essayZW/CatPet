@@ -229,6 +229,10 @@ Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" | Where-Object { $_.Co
 - 小游戏里 **移动中不进入头部跟随**：近场分支要 `_chaseDir == 0 && _walkTimer is null`
 - 运镜期间 `_cineActive = true`，点击/拖拽一律早退
 - 退出走 `OnClosing` 拦截，播完 `_exitAnimDone` 才真正关窗
+- **打盹（`_asleep`）只能靠 `Wake()` 清**，所以睡姿必须停在 `sleep` 循环里：
+  `PlaySleepAsync()` 走 `PlayChainAsync(..., endWithIdle: false)`，否则链式播放结束会回待机，
+  画面变成普通 idle，而 `_asleep` 还是 true → 跟随、小动作、姿态轮换全被挡，
+  表现为"看着像正常待机但不跟鼠标、点一下才恢复"的假死状态
 
 ### 5.3 速度
 

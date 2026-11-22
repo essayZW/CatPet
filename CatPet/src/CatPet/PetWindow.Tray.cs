@@ -56,6 +56,7 @@ public partial class PetWindow
     /// <summary>把猫叫出来（第二个实例启动、或托盘里点"显示猫"时用）。</summary>
     internal void ShowFromTray()
     {
+        if (_asleep) Wake();      // 隐藏期间可能打盹了，重新显示时先醒过来
         _userHidden = false;
         if (!IsVisible)
             Show();
@@ -79,7 +80,8 @@ public partial class PetWindow
         }
         else
         {
-            _userHidden = false;
+            if (_asleep) Wake();      // 隐藏期间可能打盹了，重新显示时先醒过来
+        _userHidden = false;
             Show();
             Activate();
         }
