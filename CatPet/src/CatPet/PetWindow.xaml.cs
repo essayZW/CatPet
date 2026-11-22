@@ -228,14 +228,14 @@ public partial class PetWindow : Window
         AnimateScaleTo(Math.Clamp(_settings.StandZoom, 1.0, 2.0));
 
         // 按片子名区分移动速度：sgal=飞奔、srun=跑、其余=走
-        var myWalkGen = _walkGen;
+        var myWalkGen = _walk.Generation;
         if (dir != 0)
         {
             var speed = name.StartsWith("sgal", StringComparison.OrdinalIgnoreCase) ? GallopPxPerSecond
                       : name.StartsWith("srun", StringComparison.OrdinalIgnoreCase) ? RunPxPerSecond
                       : WalkPxPerSecond;
             StartWalk(dir, speed);
-            myWalkGen = _walkGen;
+            myWalkGen = _walk.Generation;
         }
 
         await play;
@@ -244,7 +244,7 @@ public partial class PetWindow : Window
         if (interrupted)
         {
             // 只停自己那次位移；新动作已经开了新的位移，别越权停掉它（会导致"动画在播、窗口不动"）
-            if (_walkGen == myWalkGen) StopWalk("动作被打断");
+            StopWalk("动作被打断", myWalkGen);   // 只停自己那次位移
             return;
         }
 
@@ -1083,60 +1083,67 @@ public partial class PetWindow : Window
     }
     // ------------------------------------------------------------ 行走位移
 
-    private const double WalkPxPerSecond = 48;   // 走：原 32 有点拖，提到 48（小跑 150）
-
-    private double _walkSpeed = WalkPxPerSecond;
-    private int _walkGen;                        // 每次 StartWalk 自增：旧的收尾逻辑不许停掉新动作的位移
+    /// <summary>行走位移的状态机（代际/方向/速度/撞边都在里面，有单测）。</summary>
+    private readonly WalkController _walk = new();
     private DateTime _walkLastTick = DateTime.MinValue;
-    private const double RunPxPerSecond = 150;   // 跑的时候窗口移动更快（和走拉开差距）
-    private const double GallopPxPerSecond = 430; // 飞奔再快一档（走 32 / 跑 150）
+
+    private const double WalkPxPerSecond = WalkController.WalkPxPerSecond;
+    private const double RunPxPerSecond = WalkController.RunPxPerSecond;
+    private const double GallopPxPerSecond = WalkController.GallopPxPerSecond;
 
     private void StartWalk(int dir, double? pxPerSecond = null)
     {
-        _walkSpeed = pxPerSecond ?? WalkPxPerSecond;
-        _walkGen++;
         _walkLastTick = DateTime.MinValue;   // 按真实经过时间算位移，定时器抖动不影响速度
         StopWalk("重新开始走");
-        Diag($"[walk] start dir={dir} speed={_walkSpeed:0} L={Left:0}");
+        var gen = _walk.Start(dir, pxPerSecond);
+        Diag($"[walk] start dir={_walk.Direction} speed={_walk.Speed:0} L={Left:0}");
         _walkTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(30) };
-        _walkTimer.Tick += (_, _) =>
+        _walkTimer.Tick += (_, _) => WalkTick(gen);
+        _walkTimer.Start();
+    }
+
+    /// <summary>位移定时器：只负责"按真实经过时间问状态机要一步"，边界/孤儿都由状态机判。</summary>
+    private void WalkTick(int gen)
+    {
+        var now = DateTime.UtcNow;
+        var dt = _walkLastTick == DateTime.MinValue ? 0.0 : (now - _walkLastTick).TotalSeconds;
+        _walkLastTick = now;
+
+        var screenLeft = SystemParameters.VirtualScreenLeft;
+        var screenRight = screenLeft + SystemParameters.VirtualScreenWidth;
+
+        // 保险：动作已结束（或被打断）就别再让窗口滑行 —— 这是"猫没走、窗口却在滑"的根源
+        var ownerActive = StandBusy || ChaseActive;
+        var step = _walk.Tick(dt, Left, Width, screenLeft, screenRight, ownerActive);
+
+        switch (step.Kind)
         {
-            // 保险：动作已结束（或被打断）就别再让窗口滑行
-        if (!StandBusy && !ChaseActive)
-            {
-                StopWalk("动作已结束");
-                return;
-            }
+            case WalkTickKind.Moved:
+                if (gen == _walk.Generation) Left = step.NextLeft;
+                break;
 
-            var now = DateTime.UtcNow;
-            var dt = _walkLastTick == DateTime.MinValue ? 0.0 : (now - _walkLastTick).TotalSeconds;
-            _walkLastTick = now;
-            dt = Math.Clamp(dt, 0.0, 0.15);      // 卡顿/最小化时不要一次跳很远
-            var dx = _walkSpeed * dt * dir;
-            var next = Left + dx;
-            var left = SystemParameters.VirtualScreenLeft;
-            var right = left + SystemParameters.VirtualScreenWidth;
-
-            // 撞到屏幕边界：停位移、吐槽一句、结束行走
-            if ((dir < 0 && next <= left) || (dir > 0 && next + Width >= right))
-            {
+            case WalkTickKind.HitEdge:
                 System.Diagnostics.Debug.WriteLine($"[walk] 撞边 L={Left:0} W={Width:0} 右={Left + Width:0}");
                 StopWalk("撞边");
                 if (!ChaseActive) SayFrom(EdgeTexts);   // 小游戏里贴边是常态，别刷"撞墙了"
                 if (!ChaseActive) _ = PlayStandIdleForFacingAsync();
-                return;
-            }
-            Left = next;
-        };
-        _walkTimer.Start();
+                break;
+
+            case WalkTickKind.OrphanStopped:
+                StopWalk("动作已结束");
+                break;
+        }
     }
 
-    private void StopWalk(string reason = "")
+    /// <summary>停下位移（幂等）。onlyIfGeneration 用于"只停自己那次"，防止越权停掉新动作。</summary>
+    private void StopWalk(string reason = "", int? onlyIfGeneration = null)
     {
+        if (onlyIfGeneration is int g && !_walk.StopIfCurrent(g)) return;
         if (_walkTimer is not null)
             Diag($"[walk] stop（{reason}）L={Left:0}");
         _walkTimer?.Stop();
         _walkTimer = null;
+        _walk.Stop();
         SavePosition();
     }
     // ------------------------------------------------------------ 番茄钟 / 喝水提醒

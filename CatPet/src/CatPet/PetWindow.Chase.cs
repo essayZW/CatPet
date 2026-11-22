@@ -464,7 +464,7 @@ public partial class PetWindow
         }
         else
         {
-            _walkSpeed = _chaseSpeed;      // 同方向只改速度，位移定时器按真实时间积分
+            _walk.SetSpeed(_chaseSpeed);   // 同方向只改速度，位移定时器按真实时间积分
         }
 
         var clip = GaitClip(_chaseSpeed, dir);

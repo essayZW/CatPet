@@ -219,11 +219,13 @@ Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" | Where-Object { $_.Co
 
 ### 5.2 状态机关键点（踩过的坑，改之前先读）
 
-- `PlayStandAsync` 里 **`_standAction` / `_walkGen` / `_player.Generation`** 三个"代际"各有用途：
+- `PlayStandAsync` 里 **`_standAction` / `_walk.Generation` / `_player.Generation`** 三个"代际"各有用途：
   - `_player.Generation`：谁在占用画面
   - `_standAction`：站立动作进行中，跟随不许抢画面
-  - `_walkGen`：位移归属，旧动作收尾不能停掉新动作的位移
-- **位移只能由 `StartWalk` 起、`StopWalk` 停**。看到"猫没走但窗口在滑"，先查有没有孤儿 `_walkTimer`
+  - `_walk.Generation`：位移归属，旧动作收尾不能停掉新动作的位移（`StopWalk(reason, gen)`）
+- **位移只有一条路**：`StartWalk` 起 → `WalkTick` 调 `WalkController.Tick` → `StopWalk` 停。
+  方向/速度/代际/撞边/孤儿检测全在 `Core/WalkController.cs`（有单测），窗口只负责
+  "按 tick 结果改 Left"。看到"猫没走但窗口在滑"，先看 `Tick(..., ownerActive)` 的入参
 - `AnimateScaleTo` 的早退只比当前尺寸；它和走路都会改 `Left/Top`，同时跑会互相盖
 - 跟随（`UpdateHeadFollow`）在追逐阶段（`ChaseActive && !_chaseNear`）必须直接 return
 - 小游戏里 **移动中不进入头部跟随**：近场分支要 `_chaseDir == 0 && _walkTimer is null`
@@ -302,8 +304,10 @@ dotnet test CatPet\tests\CatPet.Tests\CatPet.Tests.csproj
     时段规则（掷骰映射、打盹阈值、发呆口气、跟随期白名单）、走路步频
   - `PetGates`（编排门禁）：坐姿小动作 / 姿态轮换 / 打盹 / 小游戏 tick / 跟随该不该接管（含优先级）
   - `SleepMachine`（睡眠状态机）：到阈值才睡、睡不重睡、只有交互能醒、醒可再睡
-- 覆盖率现状（`dotnet test --collect:"XPlat Code Coverage"`）：**整个程序集约 3%**，
-  但 `PetLogic` 94%、`PetGates` 94%、`SleepMachine` 100%。
+  - `WalkController`（行走位移）：方向/速度、dt 夹取、撞边即停、孤儿位移回收、
+    代际只能停自己那次、同方向改速度
+- 覆盖率现状（`dotnet test --collect:"XPlat Code Coverage"`）：**整个程序集约 3.8%**，
+  但 `PetLogic` 94%、`PetGates` 94%、`SleepMachine` 100%、`WalkController` 91%。
   窗口/追逐/托盘/播放器仍是 0%（要抽编排状态才能测）
 - **写新规则时的顺序**：先在 `PetLogic` 里加纯函数 → 补用例 → 再让 `PetWindow` 调用它
 - 历史 bug 一律补一条回归用例（现在的"转身被跟随撤销""拖回边上不再回边"都是这么来的）
