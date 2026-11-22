@@ -229,10 +229,13 @@ Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" | Where-Object { $_.Co
 - 小游戏里 **移动中不进入头部跟随**：近场分支要 `_chaseDir == 0 && _walkTimer is null`
 - 运镜期间 `_cineActive = true`，点击/拖拽一律早退
 - 退出走 `OnClosing` 拦截，播完 `_exitAnimDone` 才真正关窗
-- **打盹（`_asleep`）只能靠 `Wake()` 清**，所以睡姿必须停在 `sleep` 循环里：
-  `PlaySleepAsync()` 走 `PlayChainAsync(..., endWithIdle: false)`，否则链式播放结束会回待机，
-  画面变成普通 idle，而 `_asleep` 还是 true → 跟随、小动作、姿态轮换全被挡，
+- **打盹（`_asleep`）只能靠 `Wake()` 清**，所以睡姿必须**停在 B 段循环**里：
+  `PlaySleepAsync()` = A 一次 → `B` 无限循环；`PlayChainAsync` 默认播完会回待机，
+  回待机后画面变成普通 idle，而 `_asleep` 还是 true → 跟随/小动作/姿态轮换全被挡，
   表现为"看着像正常待机但不跟鼠标、点一下才恢复"的假死状态
+- **睡姿不能循环 `sleep` 的 C 段**：C 只有 6 帧 660ms（`C_End` = 抬头睁眼的过渡），
+  循环起来就是"一直点头"。`B_Loop`（18 帧 2.5s）才是呼吸循环，醒来时由
+  `PlaySleepWakeAsync()` 播 C 再回待机
 
 ### 5.3 速度
 

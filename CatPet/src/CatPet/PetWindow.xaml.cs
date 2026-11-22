@@ -1598,7 +1598,7 @@ public partial class PetWindow : Window
             return;
 
         _asleep = false;
-        _ = _player.PlayIdleAsync();
+        _ = _player.PlaySleepWakeAsync();   // 先播"抬头睁眼"(sleep C) 再回待机
     }
 
     /// <summary>很久没交互 → 打盹。</summary>

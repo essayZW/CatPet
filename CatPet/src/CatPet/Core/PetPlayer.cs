@@ -145,11 +145,28 @@ public sealed class PetPlayer
     public Task PlayTouchHeadAsync() => PlayChainAsync(GraphType.Touch_Head, 2);
 
     /// <summary>
-    /// 打盹：Sleep 的 A → B(若干轮) → C，然后**停在睡姿循环**（不回待机）。
-    /// 不能回待机：`_asleep` 要等用户点击才清，而回待机会让画面看起来只是普通待机，
-    /// 于是"打盹中但不像睡着"+ 跟随/小动作全被 `_asleep` 挡住 = 看起来像卡死。
+    /// 打盹：Sleep 的 A（闭眼）→ **B 无限循环**（睡姿呼吸），停在这里不回待机。
+    /// 两个坑：
+    ///   1) 不能回待机 —— `_asleep` 要等用户点击才清，回待机会让画面变成普通待机，
+    ///      而跟随/小动作全被 `_asleep` 挡住，看着像卡死；
+    ///   2) 不能循环 C —— C 只有 6 帧 660ms，循环起来就是"不停点头"。
+    /// 醒来由 <see cref="PlaySleepWakeAsync"/> 播 C 再回待机。
     /// </summary>
-    public Task PlaySleepAsync() => PlayChainAsync(GraphType.Sleep, 6, endWithIdle: false);
+    public Task PlaySleepAsync() => RunExclusive(async ct =>
+    {
+        var set = _book.FindSet(GraphType.Sleep, Mode);
+        if (set.A is not null) await PlayAsync(set.A, 1, ct);
+        if (set.B is not null) await PlayAsync(set.B, -1, ct);
+        else if (set.Single is not null) await PlayAsync(set.Single, 1, ct);
+    });
+
+    /// <summary>从打盹里醒来：播 C（抬头睁眼）再回待机。</summary>
+    public Task PlaySleepWakeAsync() => RunExclusive(async ct =>
+    {
+        var set = _book.FindSet(GraphType.Sleep, Mode);
+        if (set.C is not null) await PlayAsync(set.C, 1, ct);
+        await PlayIdleInner(ct);
+    });
 
     /// <summary>打哈欠：一次性动画。</summary>
     public Task PlayYawnAsync()
@@ -188,24 +205,23 @@ public sealed class PetPlayer
 
     // ------------------------------------------------------------ 内部实现
 
-    private Task PlayChainAsync(GraphType type, int loopCycles, bool endWithIdle = true)
+    private Task PlayChainAsync(GraphType type, int loopCycles)
         => RunExclusive(async ct =>
         {
             var set = _book.FindSet(type, Mode);
 
             if (set.Single is not null && set.A is null && set.B is null && set.C is null)
             {
-                // endWithIdle=false：播完停在最后一段循环（打盹用，保持睡姿）
-                await PlayAsync(set.Single, endWithIdle ? 1 : -1, ct);
-                if (endWithIdle) await PlayIdleInner(ct);
+                await PlayAsync(set.Single, 1, ct);
+                await PlayIdleInner(ct);
                 return;
             }
 
             if (set.A is not null) await PlayAsync(set.A, 1, ct);
             if (set.B is not null) await PlayAsync(set.B, loopCycles, ct);
-            if (set.C is not null) await PlayAsync(set.C, endWithIdle ? 1 : -1, ct);
+            if (set.C is not null) await PlayAsync(set.C, 1, ct);
 
-            if (endWithIdle) await PlayIdleInner(ct);
+            await PlayIdleInner(ct);
         });
 
     private async Task PlayIdleInner(CancellationToken ct)
