@@ -55,20 +55,20 @@ public static class PetGates
     /// <summary>姿态轮换（站起/坐下/溜达）：空闲 18 秒以上。</summary>
     public const double ChurnAfterSeconds = 18;
 
-    /// <summary>坐姿小动作的定时器周期。</summary>
+    /// <summary>坐姿小动作的定时器周期（<c>_idleTimer</c> 用它）。</summary>
     public const double IdleTickSeconds = 14;
 
-    /// <summary>姿态轮换的定时器周期（中档）。</summary>
+    /// <summary>姿态轮换的定时器周期（中档；<c>_postureTimer</c> 与 <c>ApplyActionFrequency</c> 用它）。</summary>
     public const double ChurnTickSeconds = 22;
 
-    /// <summary>跟随采样周期。</summary>
+    /// <summary>姿态轮换周期的"高"档（动作频率 = 高）。</summary>
+    public const double ChurnTickSecondsHigh = 18;
+
+    /// <summary>姿态轮换周期的"低"档（动作频率 = 低）。</summary>
+    public const double ChurnTickSecondsLow = 28;
+
+    /// <summary>跟随采样周期（<c>_followTimer</c> 用它）。</summary>
     public const double FollowTickSeconds = 0.06;
-
-    /// <summary>贴着边时的朝向纠正概率。</summary>
-    public const double TurnAwayChance = 0.8;
-
-    /// <summary>离边缘远时回边的概率。</summary>
-    public const double GoBackChance = 0.7;
 
     /// <summary>坐姿小动作。</summary>
     public static bool CanIdleAction(PetActivity a)
@@ -103,6 +103,4 @@ public static class PetGates
         return FollowGate.Allowed;
     }
 
-    /// <summary>跟随期间允许出现的"生活化小动作"档位（发呆/转头/盯鼠标不算）。</summary>
-    public static bool AllowedDuringFollow(int roll) => PetLogic.IsLivingAction(roll);
 }

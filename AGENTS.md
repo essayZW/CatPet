@@ -345,6 +345,9 @@ dotnet test CatPet\tests\CatPet.Tests\CatPet.Tests.csproj
 - 覆盖率现状（`dotnet test --collect:"XPlat Code Coverage"`）：**整个程序集约 14%**，
   其中 `PetLogic` 94%、`PetGates` 94%、`SleepMachine` 100%、`WalkController` 100%、`ChaseRules` 98%、`CinematicTimeline` 95%、`PetLoader` 97%/79%、`GraphBook` 84%、`GraphInfo` 88%、`Lps` 96%。
   窗口/托盘/播放器仍是 0%（要抽编排状态才能测）
+- **常量只留一份**：概率/阈值放 `PetLogic` 或 `PetGates`，默认参数和窗口里的定时器周期都引用它们，
+  不要在窗口里再写一遍字面量（`FromSeconds(14)`、`NextDouble() < 0.8` 这种）。
+  数值改动只改常量，用例里钉住历史值。
 - **写新规则时的顺序**：先在 `PetLogic` 里加纯函数 → 补用例 → 再让 `PetWindow` 调用它
 - 历史 bug 一律补一条回归用例（现在的"转身被跟随撤销""拖回边上不再回边"都是这么来的）
 

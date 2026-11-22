@@ -126,4 +126,40 @@ public class EdgePreferenceTests
         Assert.Equal(EdgeDecision.None,
             PetLogic.EvaluateEdge(l, r, true, false, false, 0.0, 0.0).Decision);
     }
+
+
+    // ---------------------------------------------------------------- 概率来自常量
+
+    [Fact]
+    public void 转身的默认概率就是TurnAwayChance()
+    {
+        var (l, r) = Room(ScreenWidth - W - 8);          // 贴右边缘、朝右 → 该转身
+        var atChance = PetLogic.TurnAwayChance;
+
+        // 刚好小于概率 → 转身；刚好大于概率 → 不转身
+        Assert.Equal(EdgeDecision.TurnAway,
+            PetLogic.EvaluateEdge(l, r, true, true, false, atChance - 0.01, 1.0).Decision);
+        Assert.Equal(EdgeDecision.None,
+            PetLogic.EvaluateEdge(l, r, true, true, false, atChance + 0.01, 1.0).Decision);
+    }
+
+    [Fact]
+    public void 回边的默认概率就是GoBackChance()
+    {
+        var (l, r) = Room(847);                          // 两侧都远 → 该回边
+        var atChance = PetLogic.GoBackChance;
+
+        Assert.Equal(EdgeDecision.GoBack,
+            PetLogic.EvaluateEdge(l, r, false, false, false, 1.0, atChance - 0.01).Decision);
+        Assert.Equal(EdgeDecision.None,
+            PetLogic.EvaluateEdge(l, r, false, false, false, 1.0, atChance + 0.01).Decision);
+    }
+
+    [Fact]
+    public void 概率常量与历史值一致()
+    {
+        // 这两个数原来是硬编码在窗口里的 0.8 / 0.7，改动要同步这里的用例
+        Assert.Equal(0.8, PetLogic.TurnAwayChance);
+        Assert.Equal(0.7, PetLogic.GoBackChance);
+    }
 }

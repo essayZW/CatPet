@@ -198,4 +198,26 @@ public class PetGatesTests
         Assert.False(PetGates.CanChaseTick(new PetActivity { Asleep = true }));
         Assert.False(PetGates.CanChaseTick(new PetActivity { Visible = false }));
     }
+
+
+    // ---------------------------------------------------------------- 定时器周期
+
+    [Fact]
+    public void 定时器周期与历史值一致()
+    {
+        // 窗口的 _idleTimer / _postureTimer / _followTimer 直接引用这些常量，
+        // 改这里就等于改节奏，所以钉住历史值。
+        Assert.Equal(14, PetGates.IdleTickSeconds);
+        Assert.Equal(22, PetGates.ChurnTickSeconds);
+        Assert.Equal(18, PetGates.ChurnTickSecondsHigh);
+        Assert.Equal(28, PetGates.ChurnTickSecondsLow);
+        Assert.Equal(0.06, PetGates.FollowTickSeconds, 6);
+    }
+
+    [Fact]
+    public void 高档次数比低档更快()
+    {
+        Assert.True(PetGates.ChurnTickSecondsHigh < PetGates.ChurnTickSeconds);
+        Assert.True(PetGates.ChurnTickSeconds < PetGates.ChurnTickSecondsLow);
+    }
 }

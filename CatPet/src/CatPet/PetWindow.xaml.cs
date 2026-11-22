@@ -977,7 +977,12 @@ public partial class PetWindow : Window
     private void ApplyActionFrequency()
     {
         if (_postureTimer is null) return;
-        _postureTimer.Interval = TimeSpan.FromSeconds(ActionLevel switch { 2 => 18, 0 => 28, _ => 22 });
+        _postureTimer.Interval = TimeSpan.FromSeconds(ActionLevel switch
+        {
+            2 => PetGates.ChurnTickSecondsHigh,
+            0 => PetGates.ChurnTickSecondsLow,
+            _ => PetGates.ChurnTickSeconds,
+        });
     }
     /// <summary>溜达一次。forceDir：-1 往左 / +1 往右 / null 自己挑；fast：距离远时用跑。</summary>
     private void StrollOnce(int? forceDir = null, bool fast = false)
@@ -1237,7 +1242,7 @@ public partial class PetWindow : Window
         _tickTimer.Start();
 
         // 空闲时随机来点小动作：转头 / 歪头 / 打哈欠 / 叫一声
-        _idleTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(14) };
+        _idleTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(PetGates.IdleTickSeconds) };
         _idleTimer.Tick += (_, _) =>
         {
             // 能不能演小动作见 PetGates.CanIdleAction（有单测）
@@ -1334,7 +1339,7 @@ public partial class PetWindow : Window
         _fullscreenTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
         _fullscreenTimer.Tick += (_, _) => CheckFullscreen();
 
-        _followTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(60) };
+        _followTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(PetGates.FollowTickSeconds) };
         _followTimer.Tick += (_, _) =>
         {
             TrackMouseActivity();     // 鼠标在动 = 人在用电脑：别打盹、睡着要睁眼
@@ -1344,7 +1349,7 @@ public partial class PetWindow : Window
         _careTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(180) };
         _careTimer.Tick += (_, _) => OnCareTick();
 
-        _postureTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(22) };
+        _postureTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(PetGates.ChurnTickSeconds) };
         _postureTimer.Tick += (_, _) => ChurnPosture();
 
         _sleepTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };

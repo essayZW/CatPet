@@ -245,7 +245,12 @@ public partial class PetWindow
     private void ChaseTick()
     {
         if (!ChaseActive) return;
-        if (_dragging || _resizeMode || _asleep || Visibility != Visibility.Visible) return;
+        // 门禁见 PetGates.CanChaseTick（有单测）：拖拽/缩放/睡眠/隐藏时冻结
+        if (!PetGates.CanChaseTick(new PetActivity
+            {
+                Dragging = _dragging, Resizing = _resizeMode, Asleep = _asleep,
+                Visible = Visibility == Visibility.Visible,
+            })) return;
         if (!GetCursorPos(out var cursor)) return;
 
         var dpi = VisualTreeHelper.GetDpi(this);

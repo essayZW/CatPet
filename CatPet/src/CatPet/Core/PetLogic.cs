@@ -72,6 +72,12 @@ public static class PetLogic
     public static bool IsFacingOutward(double roomLeft, double roomRight, bool faceRight)
         => (IsNearRightEdge(roomRight) && faceRight) || (IsNearLeftEdge(roomLeft) && !faceRight);
 
+    /// <summary>贴着边却朝着屏幕外侧时，这一次轮换"转身"的概率。</summary>
+    public const double TurnAwayChance = 0.8;
+
+    /// <summary>离两侧边缘都远时，这一次轮换"往回挪"的概率。</summary>
+    public const double GoBackChance = 0.7;
+
     /// <summary>
     /// 一次性算出该不该纠正位置/朝向。转身优先于回边。
     /// </summary>
@@ -79,8 +85,8 @@ public static class PetLogic
     /// <param name="focusMode">专注（番茄钟工作段）时不走动、不摆动作。</param>
     /// <param name="rollTurn">0~1，用于决定这次是否执行"转身"。</param>
     /// <param name="rollGoBack">0~1，用于决定这次是否执行"回边"。</param>
-    /// <param name="turnChance">转身概率（默认 0.8）。</param>
-    /// <param name="goBackChance">回边概率（默认 0.7）。</param>
+    /// <param name="turnChance">转身概率，默认取 <see cref="TurnAwayChance"/>。</param>
+    /// <param name="goBackChance">回边概率，默认取 <see cref="GoBackChance"/>。</param>
     public static EdgeResult EvaluateEdge(
         double roomLeft,
         double roomRight,
@@ -89,8 +95,8 @@ public static class PetLogic
         bool focusMode,
         double rollTurn,
         double rollGoBack,
-        double turnChance = 0.8,
-        double goBackChance = 0.7)
+        double turnChance = TurnAwayChance,
+        double goBackChance = GoBackChance)
     {
         if (focusMode)
             return new EdgeResult(EdgeDecision.None, false, false);
