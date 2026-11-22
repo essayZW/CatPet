@@ -137,6 +137,13 @@ public partial class PetWindow : Window
     /// <summary>关心文案的间隔区间（秒）：太频繁会烦，太少又没存在感。</summary>
     private static readonly (int Min, int Max) CareInterval = (240, 420);   // 4~7 分钟
     private bool _standAction;              // 站立「动作」正在播（区别于站立待机）
+    private int _standActionGen;            // 谁拥有这个状态：播放结束/被顶掉后自动失效，避免标志卡死
+
+    /// <summary>
+    /// 站立动作是否真的还在播：既要有标志，又要当前画面还是这次动作。
+    /// 只看标志的话，动作被打断（拖动/小游戏/入睡/运镜…）后会永远为 true，跟随就再也不回来了。
+    /// </summary>
+    private bool StandBusy => _standAction && _player.Generation == _standActionGen;
 
     /// <summary>窗口平滑缩放到 factor 倍（底边中点固定）。</summary>
     private void AnimateScaleTo(double factor, int ms = 200)
@@ -197,13 +204,14 @@ public partial class PetWindow : Window
         _followPausedUntil = DateTime.Now.AddSeconds(Math.Max(2.5, loops * 0.6));   // 跟随让位给站立动作
         var play = _player.PlayStandClipAsync(name, loops);
         var gen = _player.Generation;   // 记下这次播放的代际，收尾前比对
+        _standActionGen = gen;
 
         // 等第一帧画出来再放大，避免「窗口先变大、画面还是坐姿」
         await Task.Delay(70);
         if (_player.Generation != gen)
         {
             // 已经被更晚的动作顶掉：别改窗口状态，但要把状态复位，免得卡住
-            _standAction = false;
+            if (_standActionGen == gen) _standAction = false;
             return;
         }
         _standing = true;
@@ -230,7 +238,7 @@ public partial class PetWindow : Window
             return;
         }
 
-        _standAction = false;
+        if (_standActionGen == gen) _standAction = false;
         StopWalk("动作结束");
 
         if (_standing)
@@ -264,7 +272,7 @@ public partial class PetWindow : Window
         AnimateScaleTo(1.0, 180);
         await Task.Delay(120);
         // 这 120ms 里如果又站起来了（或起了别的动作），就不要再把画面切成坐姿待机
-        if (_standing || _standAction || ChaseActive) return;
+        if (_standing || StandBusy || ChaseActive) return;
         // 不能 await：PlayIdleAsync 是无限循环，await 会让调用方永远等下去
         // （之前就是这个 bug —— 站姿下点坐姿动作要再点一次才播）
         _ = _player.PlayIdleAsync();
@@ -679,7 +687,7 @@ public partial class PetWindow : Window
 
         // 站立动作（走/跑/飞奔/跳/摇尾巴…）进行中，跟随不许抢画面：
         // 抢了就会看到"猫停下来看你、窗口却还在滑"，跑一半也会被截断
-        if (_standAction)
+        if (StandBusy)
             return;
 
         // 小游戏里"追逐"阶段不要插手：那时画面归步态，跟随只在 _chaseNear（停下来看）时才该出现。
@@ -807,7 +815,7 @@ public partial class PetWindow : Window
         if (ActionBusy) return;
         // 待机时小概率发起"一起玩"的邀约（专注模式/冷却中不会触发）
         if (MaybeInvite()) return;
-        if (_dragging || _asleep || _resizeMode || _standAction) return;
+        if (_dragging || _asleep || _resizeMode || StandBusy) return;
         if (DateTime.Now - _lastInteraction < TimeSpan.FromSeconds(18)) return;
         if (Visibility != Visibility.Visible) return;
 
@@ -989,7 +997,7 @@ public partial class PetWindow : Window
         _walkTimer.Tick += (_, _) =>
         {
             // 保险：动作已结束（或被打断）就别再让窗口滑行
-            if (!_standAction && !ChaseActive)
+        if (!StandBusy && !ChaseActive)
             {
                 StopWalk("动作已结束");
                 return;

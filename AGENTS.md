@@ -113,8 +113,9 @@ stand/swalk_l/swalk_l_000_24.png     ← {目录}/{前缀}_{三位序号}_{帧�
 
 - 出现/退场素材：末帧（出现）/首帧（退场）对齐 `sidle` 的像素高度
 - 运镜内部"行走段"要对齐"落定段同侧交界帧"，不是直接对齐待机
-- 跟随图集（`sfollow*`）：中心帧（平视·正前）对齐 `sidle` 高度；右侧图集天生小 4.4%，用
-  `artwork/blender/match_sfollow_r.py` 以脚底中心为锚放大 1.046 倍
+- 跟随图集（`sfollow*`）：中心帧（平视·正前）对齐 `sidle` / `sidle_r` 的高度与宽度
+- **站姿跟随的左右两套必须用同一个脚本烘焙**（`bake_follow_stand.py` + `FOLLOW_AZ=±25`）。
+  历史上右侧用了另一个脚本，姿态/光照都不同：同高度下宽 12px、暗 4.4%，导致"跟随比待机大一圈"
 - 对齐基准值（330 画布）：`sidle` 高 **289px**、脚底 **0.9606**
 
 ### 3.3 亮度对齐
@@ -181,7 +182,7 @@ $env:W45_PREFIX="swalk_l"; $env:W45_AZ="90"; $env:W45_N="30"; $env:W45_MS="24"
 | `bake_stand_jump.py` / `_diag.py` | `JUMP_PREFIX/AZ/STEP_MS` | 原地跳 / 斜跳 |
 | `bake_stand_idle_side.py` | `IDLE_PREFIX/AZ` | 站立待机 |
 | `bake_stand_settle.py` | `SET_PREFIX/AZ/DIR/N/MS` | 行走 ↔ 待机 的落定过渡 |
-| `bake_follow.py` / `_stand.py` / `_stand_r.py` | `FOLLOW_STEP` | 头部跟随图集（25 列 × 5 行） |
+| `bake_follow.py`（坐姿）/ `bake_follow_stand.py`（站姿） | `FOLLOW_AZ` / `FOLLOW_STEP` / `FOLLOW_PREFIX` / `FOLLOW_FRAMES_DIR` | 头部跟随图集（25 列 × 5 行）；站姿左右两套用**同一个脚本**换 `FOLLOW_AZ=25 / -25` |
 | `compose_cinematic.py` | — | 把行走 + 落定合成运镜，并做尺寸/亮度/脚底对齐 |
 
 流程：**烘焙 → 装进 `mod/`（必要时降到 330）→ 改 `info.lps` → 跑校验 → 构建验证**。

@@ -12,13 +12,15 @@ import math as _m
 from mathutils import Vector, Matrix
 
 OUT = r"D:\code\my_pet\artwork\blender"
-FRAMES = os.path.join(OUT, "frames_follow_stand")
+FOLLOW_PREFIX_OUT = os.environ.get("FOLLOW_FRAMES_DIR", "frames_follow_stand")
+FRAMES = os.path.join(OUT, FOLLOW_PREFIX_OUT)
 os.makedirs(FRAMES, exist_ok=True)
 for f in os.listdir(FRAMES):
     if f.endswith(".png"):
         os.remove(os.path.join(FRAMES, f))
 
 FOLLOW_STEP = float(os.environ.get("FOLLOW_STEP", "5"))
+FOLLOW_NAME = os.environ.get("FOLLOW_PREFIX", "sfollow")
 YAWS = [round(-50 + FOLLOW_STEP * i, 3) for i in range(int(round((50 + 70) / FOLLOW_STEP)) + 1)]
 PITCHES = [-20, -10, 0, 10, 20]   # 抬头20 / 抬头10 / 平视 / 低头10 / 低头20
 
@@ -72,7 +74,8 @@ for o in [o for o in sc.objects if o.type == 'CAMERA']:
 cd = bpy.data.cameras.new("cam_sfollow"); cd.type = 'ORTHO'; cd.ortho_scale = L
 cam = bpy.data.objects.new("cam_follow", cd); sc.collection.objects.link(cam); sc.camera = cam
 center = Vector(((mn.x + mx.x) * 0.5, (mn.y + mx.y) * 0.5, mn.z + 0.444 * L))
-az, el = math.radians(25.0), math.radians(7.0)
+AZ = float(os.environ.get("FOLLOW_AZ", "25"))
+az, el = math.radians(AZ), math.radians(7.0)
 d = Vector((math.sin(az) * math.cos(el), -math.cos(az) * math.cos(el), math.sin(el)))
 cam.location = center + d * 6
 cam.rotation_euler = (center - cam.location).to_track_quat('-Z', 'Y').to_euler()
@@ -101,7 +104,7 @@ def clear():
 
 def render(idx, ms=120):
     bpy.context.view_layer.update()
-    sc.render.filepath = os.path.join(FRAMES, f"sfollow_{idx:03d}_{ms}.png")
+    sc.render.filepath = os.path.join(FRAMES, f"{FOLLOW_NAME}_{idx:03d}_{ms}.png")
     bpy.ops.render.render(write_still=True)
 
 
