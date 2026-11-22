@@ -824,7 +824,8 @@ public partial class PetWindow : Window
             else
             {
                 SayFrom(StandUpTexts);
-                _ = PlayStandAsync("sidle", 2, 0, "");
+                // 按当前朝向选 sidle / sidle_r，否则朝右时站起来会"翻个面"
+                _ = PlayStandAsync(SideClip("sidle", "sidle_r"), 2, 0, "");
             }
             return;
         }
@@ -833,7 +834,7 @@ public partial class PetWindow : Window
         if (!InFocusMode && Random.Shared.Next(100) < 35 && _loader.Book.Has(GraphType.Stand))
         {
             SayFrom(LookAroundTexts);
-            _ = PlayStandAsync("slook", 1, 0, "");
+            _ = PlayStandAsync(SideClip("slook", "slook_r"), 1, 0, "");
             return;
         }
 
