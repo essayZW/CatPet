@@ -740,12 +740,10 @@ public partial class PetWindow : Window
         // 小游戏的"近距离看着鼠标"模式用近场映射（±NearZone → ±38°），比全屏映射更容易看出转头
         var wantYaw = _chaseNearYaw ?? (dx >= 0 ? dx * 70.0 : dx * 50.0);
 
-        // 朝右那套素材（相机在 −X 侧）投影是镜像的：col 0 看画面右、col 24 看画面左，
-        // 所以列索引要反过来算；不反的话鼠标在右边时头会朝左看。
+        // 左右两套图集都是同一个脚本烘的（YAWS 从 -50 递增到 +70），列序一致，
+        // 所以列索引直接线性映射：col = (wantYaw + 50) / 步长
         var useRightAtlas = _standing && _faceRight && _player.HasClip("sfollow_r");
-        var targetCol = useRightAtlas
-            ? (int)Math.Round((50.0 - wantYaw) / FollowStepDeg)
-            : (int)Math.Round((wantYaw + 50.0) / FollowStepDeg);
+        var targetCol = (int)Math.Round((wantYaw + 50.0) / FollowStepDeg);   // 左右两套图集列序一致（YAWS 都由 -50 递增）
         targetCol = Math.Clamp(targetCol, 0, FollowCols - 1);
         var targetRow = dy < -0.6 ? 0 : dy < -0.22 ? 1 : dy > 0.6 ? 4 : dy > 0.22 ? 3 : 2;
 
