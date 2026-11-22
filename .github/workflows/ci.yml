@@ -1,0 +1,37 @@
+name: ci
+
+# 每次推 main / 提 PR 都跑一遍纯逻辑单测（不需要素材、不需要跑起桌宠）
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: 纯逻辑单测
+        shell: pwsh
+        run: |
+          dotnet test CatPet\tests\CatPet.Tests\CatPet.Tests.csproj --nologo `
+            --logger "trx;LogFileName=test.trx" `
+            --results-directory TestResults
+
+      - name: 上传测试结果
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults
+          if-no-files-found: ignore

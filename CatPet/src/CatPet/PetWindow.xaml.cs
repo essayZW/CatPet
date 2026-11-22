@@ -20,19 +20,8 @@ public partial class PetWindow : Window
     private readonly DispatcherTimer _bubbleTimer;
     private readonly DispatcherTimer _sleepTimer;
     private bool _asleep;
-    /// <summary>多久没人理就打盹。</summary>
-    /// <summary>多久没互动就打盹。深夜犯困快、午后也容易困。</summary>
-    private static TimeSpan SleepAfter
-    {
-        get
-        {
-            var h = DateTime.Now.Hour;
-            if (h >= 22 || h < 5) return TimeSpan.FromSeconds(25);     // 深夜：很快犯困
-            if (h >= 12 && h < 15) return TimeSpan.FromSeconds(35);    // 午后：容易犯困
-            if (h >= 5 && h < 10) return TimeSpan.FromSeconds(55);     // 早上：精神好
-            return TimeSpan.FromSeconds(45);
-        }
-    }
+    /// <summary>多久没互动就打盹。深夜犯困快、午后也容易困。规则见 <see cref="PetLogic.SleepAfterSeconds"/>。</summary>
+    private static TimeSpan SleepAfter => TimeSpan.FromSeconds(PetLogic.SleepAfterSeconds(DateTime.Now.Hour));
     /// <summary>小动作播完之前，别的轮换（换姿势/姿态切换/邀约/打盹）都不要插进来。</summary>
     private DateTime _actionBusyUntil = DateTime.MinValue;
     private bool ActionBusy => DateTime.Now < _actionBusyUntil;
@@ -122,12 +111,16 @@ public partial class PetWindow : Window
 
     /// <summary>
     /// 发呆的气泡：挂满整段发呆（gaze 3.08s），免得看着像卡住了。
-    /// 深夜/午后的发呆换成"困了"的说法。
+    /// 深夜/午后的发呆换成"困了"的说法（口气选择见 <see cref="PetLogic.GazeMoodForHour"/>）。
     /// </summary>
     private void SayGaze()
     {
-        var h = DateTime.Now.Hour;
-        var pool = (h >= 22 || h < 5) ? NightGazeTexts : (h >= 12 && h < 15) ? DrowsyGazeTexts : GazeTexts;
+        var pool = PetLogic.GazeMoodForHour(DateTime.Now.Hour) switch
+        {
+            GazeMood.Night => NightGazeTexts,
+            GazeMood.Drowsy => DrowsyGazeTexts,
+            _ => GazeTexts,
+        };
         SayFrom(pool, 3.2);
     }
 
@@ -275,7 +268,7 @@ public partial class PetWindow : Window
 
     /// <summary>按当前朝向选左右两套素材之一（没有右向素材时退回左向）。</summary>
     private string SideClip(string left, string right) =>
-        _faceRight && _player.HasClip(right) ? right : left;
+        PetLogic.SideClip(_faceRight, left, right, _player.HasClip);
 
     /// <summary>切回坐姿：缩回原尺寸并播坐姿待机。</summary>
     private async Task ReturnSittingAsync()
@@ -651,23 +644,12 @@ public partial class PetWindow : Window
         return _player.PlayStandClipAsync(_faceRight && _player.HasClip("sidle_r") ? "sidle_r" : "sidle", -1);
     }
 
-    /// <summary>朝左的站立素材名（不带 _l 后缀的这批默认就是朝左）。</summary>
-    private static readonly HashSet<string> LeftFacingClips = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "sidle", "slook", "swag", "sclose", "sjump", "sjump_diag", "sfollow",
-    };
-
     /// <summary>
     /// 按片子名更新朝向：`_r` 结尾 = 朝右，`_l` 结尾或"朝左的那批" = 朝左。
-    /// 注意：`sidle` / `slook` / `swag` 这些不带后缀的其实是**朝左**素材，
-    /// 不识别它们就会出现"画面明明朝左、_faceRight 还是 true"，
-    /// 于是头部跟随一接管又切回 sfollow_r（看起来像转身被撤销）。
+    /// 规则本体在 <see cref="PetLogic.FacingAfterClip"/>（有单测覆盖）。
     /// </summary>
-    private void UpdateFacingFromClip(string clip)
-    {
-        if (clip.EndsWith("_r", StringComparison.Ordinal)) _faceRight = true;
-        else if (clip.EndsWith("_l", StringComparison.Ordinal) || LeftFacingClips.Contains(clip)) _faceRight = false;
-    }
+    private void UpdateFacingFromClip(string clip) => _faceRight = PetLogic.FacingAfterClip(_faceRight, clip);
+
 
     /// <summary>当前是否处于跟随状态：设置里常开，或者处在跟随动作区间内。</summary>
     private bool FollowWanted =>
@@ -828,8 +810,6 @@ public partial class PetWindow : Window
     // ---------------------------------------------------------------- 贴边偏好
     // 猫更多时候倾向于待在屏幕边上：走动后离边远了会自己挪回去；
     // 站着的时候也背对边缘（靠右 → 朝左看，靠左 → 朝右看）。
-    private const double EdgeComfort = 96;    // 距屏幕边缘 ≤ 96px 视为"贴着边"
-    private const double EdgeFar = 260;       // 两侧边缘都远于 260px 视为"待在中间"
 
     private (double Left, double Right) ScreenRoom()
     {
@@ -838,30 +818,23 @@ public partial class PetWindow : Window
         return (Left - left, right - (Left + Width));
     }
 
-    private bool NearRightEdge => ScreenRoom().Right <= EdgeComfort;
-    private bool NearLeftEdge => ScreenRoom().Left <= EdgeComfort;
+    private bool NearRightEdge => PetLogic.IsNearRightEdge(ScreenRoom().Right);
+    private bool NearLeftEdge => PetLogic.IsNearLeftEdge(ScreenRoom().Left);
 
     /// <summary>离两侧边缘都远，应该往回挪。</summary>
     private bool AwayFromEdges
     {
-        get { var r = ScreenRoom(); return Math.Min(r.Left, r.Right) > EdgeFar; }
+        get { var r = ScreenRoom(); return PetLogic.IsAwayFromEdges(r.Left, r.Right); }
     }
 
     /// <summary>贴着边却朝屏幕外侧（应该转过去）。</summary>
-    private bool FacingOutward => (NearRightEdge && _faceRight) || (NearLeftEdge && !_faceRight);
+    private bool FacingOutward
+    {
+        get { var r = ScreenRoom(); return PetLogic.IsFacingOutward(r.Left, r.Right, _faceRight); }
+    }
 
     /// <summary>把动作名换成"朝屏幕内侧"的那一套（靠左用 _r，靠右用不带后缀的）。</summary>
-    private string InwardClip(string baseName)
-    {
-        var wantRight = NearLeftEdge;          // 靠左边 → 朝右（背对左边缘）
-        return baseName switch
-        {
-            "sidle" => wantRight ? "sidle_r" : "sidle",
-            "slook" => wantRight ? "slook_r" : "slook",
-            "swag" => wantRight ? "swag_r" : "swag",
-            _ => baseName,
-        };
-    }
+    private string InwardClip(string baseName) => PetLogic.InwardClip(baseName, NearLeftEdge);
     // ---------------------------------------------------------------- 贴边偏好（结束）
 
 
@@ -888,9 +861,13 @@ public partial class PetWindow : Window
 
         var level = ActionLevel;
 
-        // ① 贴着边却朝着屏幕外侧：优先转身（背对边缘）。
-        //    拖到边上也算满足条件——判断只看"当前"位置，不做额外记忆。
-        if (_standing && FacingOutward && !InFocusMode && Random.Shared.NextDouble() < 0.8)
+        // 贴边偏好：贴着边却朝屏幕外就转身；离两侧边缘都远就往回挪。
+        // 规则与概率在 PetLogic.EvaluateEdge 里（有单测），这里只负责执行。
+        var room = ScreenRoom();
+        var edge = PetLogic.EvaluateEdge(room.Left, room.Right, _standing, _faceRight, InFocusMode,
+                                         Random.Shared.NextDouble(), Random.Shared.NextDouble());
+
+        if (edge.Decision == EdgeDecision.TurnAway)
         {
             var pick = Random.Shared.Next(3);
             var name = pick == 0 ? InwardClip("slook") : pick == 1 ? InwardClip("swag") : InwardClip("sidle");
@@ -900,14 +877,11 @@ public partial class PetWindow : Window
             return;
         }
 
-        // ② 离两侧边缘都远：大概率往回挪（被手动拖回去了就不会触发，因为位置已经贴边）
-        if (AwayFromEdges && !InFocusMode && Random.Shared.NextDouble() < 0.7)
+        if (edge.Decision == EdgeDecision.GoBack)
         {
-            var room = ScreenRoom();
-            var goLeft = room.Left < room.Right;
-            var dist = goLeft ? room.Left : room.Right;
-            Diag($"[edge] 回到边缘 方向={(goLeft ? "左" : "右")} 距离={dist:0}px");
-            StrollOnce(goLeft ? -1 : 1, fast: dist > 320);
+            var dist = edge.GoLeft ? room.Left : room.Right;
+            Diag($"[edge] 回到边缘 方向={(edge.GoLeft ? "左" : "右")} 距离={dist:0}px");
+            StrollOnce(edge.GoLeft ? -1 : 1, fast: edge.Fast);
             return;
         }
 
@@ -1019,23 +993,8 @@ public partial class PetWindow : Window
 
     // ------------------------------------------------------------ 时段偏好
 
-    /// <summary>待机随机池的掷骰：早上偏张望、午后偏哈欠发呆、深夜偏发呆。</summary>
-    private static int IdleRoll()
-    {
-        var h = DateTime.Now.Hour;
-        var r = Random.Shared.Next(11);
-
-        if (h >= 5 && h < 10)          // 早上精神，多看看四周
-            return r switch { 2 => 6, 3 => 6, 7 => 0, _ => r };
-
-        if (h >= 12 && h < 15)         // 午后犯困，多打哈欠/发呆
-            return r switch { 5 => 2, 6 => 7, 1 => 2, _ => r };
-
-        if (h >= 22 || h < 5)          // 深夜，多发呆少折腾
-            return r switch { 1 => 7, 3 => 7, 5 => 7, 8 => 7, _ => r };
-
-        return r;
-    }
+    /// <summary>待机随机池的掷骰：早上偏张望、午后偏哈欠发呆、深夜偏发呆。规则见 <see cref="PetLogic.IdleRoll"/>。</summary>
+    private static int IdleRoll() => PetLogic.IdleRoll(DateTime.Now.Hour, Random.Shared.Next(11));
 
     // ------------------------------------------------------------ 关心话（不绑定动作）
 
@@ -1285,7 +1244,7 @@ public partial class PetWindow : Window
         };
 
         // 跟随期间允许出现的"生活化小动作"：舔毛 / 哈欠 / 歪头 / 抖毛 / 东张西望
-        static bool LivingAction(int roll) => roll is 1 or 2 or 3 or 5 or 6;
+        static bool LivingAction(int roll) => PetLogic.IsLivingAction(roll);
 
         // 隔一段时间在"正脸"和"侧脸"之间换一次姿势
         _faceTimer = new DispatcherTimer { Interval = FaceSwitchEvery };

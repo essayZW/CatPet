@@ -279,7 +279,30 @@ Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" | Where-Object { $_.Co
 
 ---
 
-## 6. 诊断与测试钩子
+## 6. 单元测试（纯逻辑）
+
+逻辑规则不要埋在窗口类里靠肉眼验证。能脱离界面判断的规则，都放进
+`CatPet/src/CatPet/Core/PetLogic.cs`（**纯函数、不碰 WPF、时间与随机数由调用方传入**），
+再在 `CatPet/tests/CatPet.Tests/` 写 xunit 用例。
+
+```powershell
+.\CatPet\tools\test.ps1              # 全部用例
+.\CatPet\tools\test.ps1 -Filter 贴边   # 只跑相关用例
+dotnet test CatPet\tests\CatPet.Tests\CatPet.Tests.csproj
+```
+
+- CI：`.github/workflows/ci.yml` 在 push main / PR 时自动跑，红了就别合
+- 目前覆盖：朝向判定（`_r`/`_l`/朝左素材）、贴边决策（回边/转身/坐姿/专注/拖回）、
+  时段规则（掷骰映射、打盹阈值、发呆口气、跟随期生活化动作白名单）、走路步频
+- **写新规则时的顺序**：先在 `PetLogic` 里加纯函数 → 补用例 → 再让 `PetWindow` 调用它
+- 历史 bug 一律补一条回归用例（现在的"转身被跟随撤销""拖回边上不再回边"都是这么来的）
+
+不适合单测、靠测试钩子 + diag 验证的部分：WPF 渲染、窗口位移、托盘、运镜时序、
+素材加载（要真素材目录）。
+
+---
+
+## 7. 诊断与测试钩子
 
 | 环境变量 | 作用 |
 | --- | --- |
@@ -297,7 +320,7 @@ Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" | Where-Object { $_.Co
 
 ---
 
-## 7. 路径与隐私
+## 8. 路径与隐私
 
 - **不要写死绝对路径**。Python 用 `os.path.dirname(os.path.abspath(__file__))` 推导，
   PowerShell 用 `$RepoRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent`，
@@ -308,7 +331,7 @@ Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" | Where-Object { $_.Co
 
 ---
 
-## 8. PowerShell 自动化注意事项
+## 9. PowerShell 自动化注意事项
 
 - 脚本文件必须存成 **UTF-8 with BOM**，否则 Windows PowerShell 5.1 读中文会语法错误
 - 多行字符串 + 引号通过 `-File` 传参容易被破坏：优先用文件写入（`[IO.File]::WriteAllText`）
@@ -318,7 +341,7 @@ Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" | Where-Object { $_.Co
 
 ---
 
-## 9. 打包（先打 tag，再打包）
+## 10. 打包（先打 tag，再打包）
 
 ```powershell
 # 1) 改版本号
@@ -363,7 +386,7 @@ git tag -a v1.3.1 -m "1.3.1"
 
 ---
 
-## 10. 提交规范
+## 11. 提交规范
 
 - **身份用全局配置**：`git config --global user.name / user.email`。
   不要在仓库里设 `user.name`/`user.email`（`--local`），也不要用 `git -c user.name=…` 临时覆盖。
@@ -373,7 +396,7 @@ git tag -a v1.3.1 -m "1.3.1"
 
 ---
 
-## 11. 已知限制
+## 12. 已知限制
 
 - 只支持 Windows（WPF、透明置顶窗口、`SetWindowDisplayAffinity`）
 - 缩放上限 2.0、下限 0.25；素材按 330px 烘焙，缩到 2 倍会略糊
