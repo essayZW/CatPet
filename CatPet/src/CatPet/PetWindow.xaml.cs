@@ -19,7 +19,10 @@ public partial class PetWindow : Window
     private readonly Image _petImage;
     private readonly DispatcherTimer _bubbleTimer;
     private readonly DispatcherTimer _sleepTimer;
-    private bool _asleep;
+    /// <summary>打盹状态机（规则见 Core/SleepMachine，有单测）。</summary>
+    private readonly SleepMachine _sleep = new();
+
+    private bool _asleep => _sleep.Asleep;
     /// <summary>多久没互动就打盹。深夜犯困快、午后也容易困。规则见 <see cref="PetLogic.SleepAfterSeconds"/>。</summary>
     private static TimeSpan SleepAfter => TimeSpan.FromSeconds(PetLogic.SleepAfterSeconds(DateTime.Now.Hour));
     /// <summary>小动作播完之前，别的轮换（换姿势/姿态切换/邀约/打盹）都不要插进来。</summary>
@@ -1561,27 +1564,30 @@ public partial class PetWindow : Window
     {
         _lastInteraction = DateTime.Now;
         _facingFront = false;   // 任何动作结束后都会回到侧脸待机
-        if (!_asleep)
+        if (_sleep.RequestWake() != SleepEvent.Woke)
             return;
 
-        _asleep = false;
         _ = _player.PlaySleepWakeAsync();   // 先播"抬头睁眼"(sleep C) 再回待机
     }
 
     /// <summary>很久没交互 → 打盹。</summary>
     private void CheckSleep()
     {
-        // 打盹门禁见 PetGates.CanSleep（有单测）；站立时的"先坐下来"分支留在下面
-        if (!PetGates.CanSleep(new PetActivity
-            {
-                Asleep = _asleep, Dragging = _dragging, Busy = ActionBusy,
-                Chase = ChaseActive, InviteOpen = InviteOpen,
-                HasSleepClip = _loader.Book.Has(GraphType.Sleep),
-                IdleSeconds = (DateTime.Now - _lastInteraction).TotalSeconds,
-                SleepAfterSeconds = SleepAfter.TotalSeconds,
-            })) return;
+        // 打盹门禁见 PetGates.CanSleep，状态转移见 SleepMachine（都有单测）。
+        // 站立时的"先坐下来"分支留在下面：不在这里拦，否则站姿永远等不到坐下。
+        if (_asleep) return;
+
+        var activity = new PetActivity
+        {
+            Asleep = _asleep, Dragging = _dragging, Busy = ActionBusy,
+            Chase = ChaseActive, InviteOpen = InviteOpen,
+            HasSleepClip = _loader.Book.Has(GraphType.Sleep),
+            IdleSeconds = (DateTime.Now - _lastInteraction).TotalSeconds,
+            SleepAfterSeconds = SleepAfter.TotalSeconds,
+        };
+
         // 站立姿态下不插播坐姿睡觉：先坐回去，之后的打盹走正常流程
-        if (_standing)
+        if (_standing && PetGates.CanSleep(activity))
         {
             Say("（站累了，坐会儿）", 3);
             _ = ReturnSittingAsync();
@@ -1589,7 +1595,10 @@ public partial class PetWindow : Window
             return;
         }
 
-        _asleep = true;
+        var fell = _sleep.CheckFallAsleep(activity.IdleSeconds, activity.SleepAfterSeconds,
+                                           PetGates.CanSleep(activity));
+        if (fell != SleepEvent.FellAsleep) return;
+
         _ = _player.PlaySleepAsync();
         SayFrom(SleepTexts);
     }

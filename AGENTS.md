@@ -292,8 +292,14 @@ dotnet test CatPet\tests\CatPet.Tests\CatPet.Tests.csproj
 ```
 
 - CI：`.github/workflows/ci.yml` 在 push main / PR 时自动跑，红了就别合
-- 目前覆盖：朝向判定（`_r`/`_l`/朝左素材）、贴边决策（回边/转身/坐姿/专注/拖回）、
-  时段规则（掷骰映射、打盹阈值、发呆口气、跟随期生活化动作白名单）、走路步频
+- 目前覆盖：
+  - `PetLogic`（决策规则）：朝向判定（`_r`/`_l`/朝左素材）、贴边决策（回边/转身/坐姿/专注/拖回）、
+    时段规则（掷骰映射、打盹阈值、发呆口气、跟随期白名单）、走路步频
+  - `PetGates`（编排门禁）：坐姿小动作 / 姿态轮换 / 打盹 / 小游戏 tick / 跟随该不该接管（含优先级）
+  - `SleepMachine`（睡眠状态机）：到阈值才睡、睡不重睡、只有交互能醒、醒可再睡
+- 覆盖率现状（`dotnet test --collect:"XPlat Code Coverage"`）：**整个程序集约 3%**，
+  但 `PetLogic` 94%、`PetGates` 94%、`SleepMachine` 100%。
+  窗口/追逐/托盘/播放器仍是 0%（要抽编排状态才能测）
 - **写新规则时的顺序**：先在 `PetLogic` 里加纯函数 → 补用例 → 再让 `PetWindow` 调用它
 - 历史 bug 一律补一条回归用例（现在的"转身被跟随撤销""拖回边上不再回边"都是这么来的）
 
