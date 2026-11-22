@@ -1,0 +1,76 @@
+﻿/// ---------------- 动画声明（格式与 VPet 的 info.lps 一致）----------------
+/// 一行一个动画：实现类#名字:| path#目录: | mode#状态: | graph#类型: | animat#段落: | loop#循环:
+/// 同一组 A/B/C 使用相同的名字，播放器才会把它们串成 开始→循环→结束。
+/// 素材来源：GPT 生成的绿底动作图集（5x5）→ 抠图 → 按空白缝隙拆分 → 统一缩放贴底
+/// 本形象提供：待机、喵叫、转头、打盹、被摸头、打哈欠、歪头
+
+PNGAnimation#idle:|path#idle:|mode#Nomal:|graph#Default:|animat#Single:|loop#true:|
+
+PNGAnimation#say:|path#say\a:|mode#Nomal:|graph#Say:|animat#A_Start:|
+PNGAnimation#say:|path#say\b:|mode#Nomal:|graph#Say:|animat#B_Loop:|
+PNGAnimation#say:|path#say\c:|mode#Nomal:|graph#Say:|animat#C_End:|
+
+PNGAnimation#turn:|path#turn\a:|mode#Nomal:|graph#Idel:|animat#A_Start:|
+PNGAnimation#turn:|path#turn\b:|mode#Nomal:|graph#Idel:|animat#B_Loop:|
+PNGAnimation#turn:|path#turn\c:|mode#Nomal:|graph#Idel:|animat#C_End:|
+
+// 打盹：低头、耳朵放平、慢呼吸
+PNGAnimation#sleep:|path#sleep\a:|mode#Nomal:|graph#Sleep:|animat#A_Start:|
+PNGAnimation#sleep:|path#sleep\b:|mode#Nomal:|graph#Sleep:|animat#B_Loop:|
+PNGAnimation#sleep:|path#sleep\c:|mode#Nomal:|graph#Sleep:|animat#C_End:|
+
+// 被摸头：头往上顶、耳朵前倾、小幅蹭动
+PNGAnimation#head:|path#touch_head\a:|mode#Nomal:|graph#Touch_Head:|animat#A_Start:|
+PNGAnimation#head:|path#touch_head\b:|mode#Nomal:|graph#Touch_Head:|animat#B_Loop:|
+PNGAnimation#head:|path#touch_head\c:|mode#Nomal:|graph#Touch_Head:|animat#C_End:|
+
+// 一次性小动作
+PNGAnimation#yawn:|path#yawn:|mode#Nomal:|graph#Yawn:|animat#Single:|
+PNGAnimation#tilt:|path#tilt:|mode#Nomal:|graph#Tilt:|animat#Single:|
+
+// 舔毛：低头舔胸口 + 下颌小幅快速张合
+PNGAnimation#lick:|path#lick\a:|mode#Nomal:|graph#Lick:|animat#A_Start:|
+PNGAnimation#lick:|path#lick\b:|mode#Nomal:|graph#Lick:|animat#B_Loop:|
+PNGAnimation#lick:|path#lick\c:|mode#Nomal:|graph#Lick:|animat#C_End:|
+
+// 正脸待机：整体绕 Z 转到镜头方向，停一会儿再转回侧脸
+PNGAnimation#front:|path#front\a:|mode#Nomal:|graph#Idle_Front:|animat#A_Start:|
+PNGAnimation#front:|path#front\b:|mode#Nomal:|graph#Idle_Front:|animat#B_Loop:|
+PNGAnimation#front:|path#front\c:|mode#Nomal:|graph#Idle_Front:|animat#C_End:|
+
+// 站立姿态动作（方案 A 重拓扑模型；只保留待机 / 左右走 / 摇尾巴）
+PNGAnimation#sidle:|path#stand\sidle:|mode#Nomal:|graph#Stand:|animat#Single:|
+PNGAnimation#sidle_r:|path#stand\sidle_r:|mode#Nomal:|graph#Stand:|animat#Single:|
+PNGAnimation#swalk_l:|path#stand\swalk_l:|mode#Nomal:|graph#Stand:|animat#Single:|
+PNGAnimation#swalk_r:|path#stand\swalk_r:|mode#Nomal:|graph#Stand:|animat#Single:|
+PNGAnimation#swag:|path#stand\swag:|mode#Nomal:|graph#Stand:|animat#Single:|
+PNGAnimation#sjump:|path#stand\sjump:|mode#Nomal:|graph#Stand:|animat#Single:|
+PNGAnimation#sjump_r:|path#stand\sjump_r:|mode#Nomal:|graph#Stand:|animat#Single:|
+PNGAnimation#sjump_diag:|path#stand\sjump_diag:|mode#Nomal:|graph#Stand:|animat#Single:|
+PNGAnimation#sjump_diag_r:|path#stand\sjump_diag_r:|mode#Nomal:|graph#Stand:|animat#Single:|
+PNGAnimation#cin_intro:|path#stand\cin_intro:|mode#Nomal:|graph#Stand:|animat#Single:|
+PNGAnimation#cin_outro:|path#stand\cin_outro:|mode#Nomal:|graph#Stand:|animat#Single:|
+PNGAnimation#cin_intro_l:|path#stand\cin_intro_l:|mode#Nomal:|graph#Stand:|animat#Single:|
+PNGAnimation#cin_outro_l:|path#stand\cin_outro_l:|mode#Nomal:|graph#Stand:|animat#Single:|
+PNGAnimation#swag_r:|path#stand\swag_r:|mode#Nomal:|graph#Stand:|animat#Single:|
+PNGAnimation#slook:|path#stand\slook:|mode#Nomal:|graph#Stand:|animat#Single:|
+PNGAnimation#slook_r:|path#stand\slook_r:|mode#Nomal:|graph#Stand:|animat#Single:|
+PNGAnimation#sclose:|path#stand\sclose:|mode#Nomal:|graph#Stand:|animat#Single:|
+PNGAnimation#sclose_r:|path#stand\sclose_r:|mode#Nomal:|graph#Stand:|animat#Single:|
+PNGAnimation#srun_l:|path#stand\srun_l:|mode#Nomal:|graph#Stand:|animat#Single:|
+PNGAnimation#srun_r:|path#stand\srun_r:|mode#Nomal:|graph#Stand:|animat#Single:|
+PNGAnimation#sgal_l:|path#stand\sgal_l:|mode#Nomal:|graph#Stand:|animat#Single:|
+PNGAnimation#sgal_r:|path#stand\sgal_r:|mode#Nomal:|graph#Stand:|animat#Single:|
+
+// 坐姿小动作：甩尾巴 / 抖毛 / 观察四周 / 呆望
+PNGAnimation#shake:|path#shake:|mode#Nomal:|graph#Shake:|animat#Single:|
+PNGAnimation#look_around:|path#look_around:|mode#Nomal:|graph#LookAround:|animat#Single:|
+PNGAnimation#gaze:|path#gaze:|mode#Nomal:|graph#Gaze:|animat#Single:|
+
+// 头部跟随鼠标：9 个水平角度（-40° ~ +40°），程序按鼠标方位选一帧静态显示
+PNGAnimation#follow:|path#follow:|mode#Nomal:|graph#HeadFollow:|animat#Single:|
+PNGAnimation#sfollow:|path#stand\sfollow:|mode#Nomal:|graph#HeadFollow:|animat#Single:|
+PNGAnimation#sfollow_r:|path#stand\sfollow_r:|mode#Nomal:|graph#HeadFollow:|animat#Single:|
+
+// 眨眼：闭眼帧取自用户提供的闭眼模型，合成在待机帧上
+PNGAnimation#blink:|path#blink:|mode#Nomal:|graph#Blink:|animat#Single:|

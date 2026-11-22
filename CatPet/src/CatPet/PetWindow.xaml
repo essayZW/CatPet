@@ -1,0 +1,103 @@
+<Window x:Class="CatPet.PetWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="CatPet"
+        Width="400" Height="400"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        Topmost="True"
+        ResizeMode="NoResize"
+        WindowStartupLocation="Manual"
+        MouseRightButtonUp="OnRightButtonUp">
+
+    <Grid x:Name="Shell">
+        <Grid.RowDefinitions>
+            <RowDefinition x:Name="BubbleRow" Height="40"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Viewbox：内部一律使用 500×500 逻辑坐标（与 VPet 一致），整体等比缩放到窗口大小 -->
+        <Viewbox Grid.Row="1" Stretch="Uniform">
+            <Grid x:Name="Root" Width="500" Height="500" Background="Transparent" Cursor="Hand"
+                  MouseLeftButtonDown="OnLeftButtonDown"
+                  MouseMove="OnMouseMove"
+                  MouseLeftButtonUp="OnLeftButtonUp">
+
+                <!-- 宠物本体：动画帧就画在这个 Image 上 -->
+                <Decorator x:Name="PetHolder" Width="500" Height="500" />
+
+
+            </Grid>
+        </Viewbox>
+
+        <!-- 说话气泡：在猫的图片上方（独立一行），字号不随窗口缩放；点击穿透到猫身上 -->
+        <Border x:Name="Bubble" Grid.Row="0" Visibility="Collapsed" IsHitTestVisible="False"
+                VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="2,2,2,4"
+                Background="#F8FFF7E2" BorderBrush="#7A000000" BorderThickness="1"
+                CornerRadius="10" Padding="10,4" MaxWidth="470">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="14" ShadowDepth="3" Direction="270"
+                                  Color="#000000" Opacity="0.55"/>
+            </Border.Effect>
+            <TextBlock x:Name="BubbleText" FontSize="15" Foreground="#2A2A2A"
+                       TextWrapping="Wrap" TextAlignment="Center" />
+        </Border>
+
+        <!-- 调整大小时的边框提示 -->
+        <Border x:Name="ResizeFrame" Visibility="Collapsed" Grid.RowSpan="2"
+                BorderBrush="#88FFFFFF" BorderThickness="1"
+                Background="#22000000" IsHitTestVisible="False" />
+
+        <!-- 四角拖拽手柄：只在"调整大小"模式下显示 -->
+        <Border x:Name="HandleTL" Visibility="Collapsed" Grid.RowSpan="2" Width="18" Height="18"
+                HorizontalAlignment="Left" VerticalAlignment="Top"
+                Margin="2" Background="#CCFFFFFF" BorderBrush="#66000000" BorderThickness="1"
+                CornerRadius="3" Cursor="SizeNWSE"
+                MouseLeftButtonDown="OnCornerDown" MouseMove="OnCornerMove" MouseLeftButtonUp="OnCornerUp"/>
+
+        <Border x:Name="HandleTR" Visibility="Collapsed" Grid.RowSpan="2" Width="18" Height="18"
+                HorizontalAlignment="Right" VerticalAlignment="Top"
+                Margin="2" Background="#CCFFFFFF" BorderBrush="#66000000" BorderThickness="1"
+                CornerRadius="3" Cursor="SizeNESW"
+                MouseLeftButtonDown="OnCornerDown" MouseMove="OnCornerMove" MouseLeftButtonUp="OnCornerUp"/>
+
+        <Border x:Name="HandleBL" Visibility="Collapsed" Grid.RowSpan="2" Width="18" Height="18"
+                HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                Margin="2" Background="#CCFFFFFF" BorderBrush="#66000000" BorderThickness="1"
+                CornerRadius="3" Cursor="SizeNESW"
+                MouseLeftButtonDown="OnCornerDown" MouseMove="OnCornerMove" MouseLeftButtonUp="OnCornerUp"/>
+
+        <Border x:Name="HandleBR" Visibility="Collapsed" Grid.RowSpan="2" Width="18" Height="18"
+                HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                Margin="2" Background="#CCFFFFFF" BorderBrush="#66000000" BorderThickness="1"
+                CornerRadius="3" Cursor="SizeNWSE"
+                MouseLeftButtonDown="OnCornerDown" MouseMove="OnCornerMove" MouseLeftButtonUp="OnCornerUp"/>
+
+
+        <!-- 调整大小模式的确认条 -->
+        <Border x:Name="ResizeBar" Visibility="Collapsed" Grid.RowSpan="2"
+                HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,8"
+                Background="#F2FFFFFF" BorderBrush="#33000000" BorderThickness="1"
+                CornerRadius="12" Padding="8,5">
+            <StackPanel Orientation="Horizontal">
+                <Button x:Name="ConfirmResize" Click="OnConfirmResize"
+                        Content="✓ 确认" Padding="10,3" Margin="0,0,6,0"
+                        Background="#FF3FA34D" Foreground="White" BorderThickness="0" FontSize="13"/>
+                <Button x:Name="CancelResize" Click="OnCancelResize"
+                        Content="取消" Padding="10,3"
+                        Background="#FFE0E0E0" Foreground="#333333" BorderThickness="0" FontSize="13"/>
+            </StackPanel>
+        </Border>
+
+
+        <!-- 计时显示（番茄钟 / 喝水提醒），只在有计时时可见 -->
+        <Border x:Name="TimerBar" Visibility="Collapsed" Grid.RowSpan="2"
+                HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,4"
+                Background="#CC000000" CornerRadius="9" Padding="8,3" IsHitTestVisible="False">
+            <TextBlock x:Name="TimerText" FontSize="13" Foreground="#FFFFFF" />
+        </Border>
+
+    </Grid>
+</Window>

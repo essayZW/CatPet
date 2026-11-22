@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>CatPet</AssemblyName>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <Version>1.3.0</Version>
+    <Product>猫咪桌宠</Product>
+    <Company>essay</Company>
+    <Authors>essay</Authors>
+    <Copyright>© 2026 essay</Copyright>
+    <RootNamespace>CatPet</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <SatelliteResourceLanguages>zh-Hans</SatelliteResourceLanguages>
+    <!-- DPI 感知写在 app.manifest 里对 WPF 是正确的；WinForms 分析器会误报，忽略它 -->
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
+  </PropertyGroup>
+
+  <!-- mod 目录原样复制到输出目录：换素材不需要重新编译 -->
+  <ItemGroup>
+    <!-- 素材不进单文件包：149MB 塞进 exe 里既慢又改不了，保持 exe 旁边的 mod 目录 -->
+    <None Update="mod\**\*.*" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+  </ItemGroup>
+
+</Project>

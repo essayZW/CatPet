@@ -1,0 +1,11 @@
+pet#MyCat:|intor#一只橘白猫,坐在窗台上看世界:|path#cat:|petname#咪咪:|
+tag#all,cat:|
+
+/// ---------------- 交互热区（500×500 逻辑坐标）----------------
+/// 数值由 tools/build-sprites-from-photos.ps1 依据素材实际占位算出
+/// 摸头：头顶那块
+touchhead:|px#144:|py#88:|sw#212:|sh#143:|
+/// 摸身体：胸口到前爪
+touchbody:|px#138:|py#256:|sw#223:|sh#176:|
+/// 被拎起来时鼠标的"抓取点"（猫身中心偏上）
+raisepoint:|nomal_x#250:|nomal_y#230:|
