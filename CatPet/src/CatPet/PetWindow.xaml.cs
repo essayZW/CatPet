@@ -796,6 +796,49 @@ public partial class PetWindow : Window
     private static readonly string[] RunTexts = { "（冲一段）", "（跑两步）", "（撒欢）" };
     private static readonly string[] GallopTexts = { "（冲啊！）", "（一溜烟）", "（撒腿就跑）" };
     private static readonly string[] SitDownTexts = { "（坐会儿）", "（站累了，坐下）", "（歇一会儿）" };
+    // 贴边偏好：回到屏幕边上 / 背对边缘
+    private static readonly string[] BackToEdgeTexts = { "（回边上去）", "（靠边待着）", "（往边上挪挪）" };
+    private static readonly string[] TurnTexts = { "（转个身）", "（背过去看）", "（换个方向）" };
+
+    // ---------------------------------------------------------------- 贴边偏好
+    // 猫更多时候倾向于待在屏幕边上：走动后离边远了会自己挪回去；
+    // 站着的时候也背对边缘（靠右 → 朝左看，靠左 → 朝右看）。
+    private const double EdgeComfort = 96;    // 距屏幕边缘 ≤ 96px 视为"贴着边"
+    private const double EdgeFar = 260;       // 两侧边缘都远于 260px 视为"待在中间"
+
+    private (double Left, double Right) ScreenRoom()
+    {
+        var left = SystemParameters.VirtualScreenLeft;
+        var right = left + Math.Max(200.0, SystemParameters.VirtualScreenWidth);
+        return (Left - left, right - (Left + Width));
+    }
+
+    private bool NearRightEdge => ScreenRoom().Right <= EdgeComfort;
+    private bool NearLeftEdge => ScreenRoom().Left <= EdgeComfort;
+
+    /// <summary>离两侧边缘都远，应该往回挪。</summary>
+    private bool AwayFromEdges
+    {
+        get { var r = ScreenRoom(); return Math.Min(r.Left, r.Right) > EdgeFar; }
+    }
+
+    /// <summary>贴着边却朝屏幕外侧（应该转过去）。</summary>
+    private bool FacingOutward => (NearRightEdge && _faceRight) || (NearLeftEdge && !_faceRight);
+
+    /// <summary>把动作名换成"朝屏幕内侧"的那一套（靠左用 _r，靠右用不带后缀的）。</summary>
+    private string InwardClip(string baseName)
+    {
+        var wantRight = NearLeftEdge;          // 靠左边 → 朝右（背对左边缘）
+        return baseName switch
+        {
+            "sidle" => wantRight ? "sidle_r" : "sidle",
+            "slook" => wantRight ? "slook_r" : "slook",
+            "swag" => wantRight ? "swag_r" : "swag",
+            _ => baseName,
+        };
+    }
+    // ---------------------------------------------------------------- 贴边偏好（结束）
+
 
     /// <summary>坐久了站起来 / 走两步；站久了坐下来。只在真正闲置时触发。</summary>
     /// <summary>专注（番茄钟工作段）时不走动。</summary>
@@ -807,6 +850,7 @@ public partial class PetWindow : Window
     /// <summary>坐久了站起来 / 走两步；站久了坐下来。只在真正闲置时触发。</summary>
     private void ChurnPosture()
     {
+        Diag($"[churn] standing={_standing} last={(_lastInteraction - DateTime.Now).TotalSeconds:0.0}s busy={ActionBusy} stand={StandBusy} room={ScreenRoom().Left:0}/{ScreenRoom().Right:0} face={_faceRight}");
         // 小游戏进行中：完全不做姿态轮换（否则会"站累了坐下"打断追逐）
         if (ChaseActive) return;
         // 小动作播放中不要打断（换姿态/邀约都等它播完）
@@ -818,6 +862,30 @@ public partial class PetWindow : Window
         if (Visibility != Visibility.Visible) return;
 
         var level = ActionLevel;
+
+        // ① 贴着边却朝着屏幕外侧：优先转身（背对边缘）。
+        //    拖到边上也算满足条件——判断只看"当前"位置，不做额外记忆。
+        if (_standing && FacingOutward && !InFocusMode && Random.Shared.NextDouble() < 0.8)
+        {
+            var pick = Random.Shared.Next(3);
+            var name = pick == 0 ? InwardClip("slook") : pick == 1 ? InwardClip("swag") : InwardClip("sidle");
+            Diag($"[edge] 转身 → {name}（近右={NearRightEdge} 近左={NearLeftEdge}）");
+            SayFrom(TurnTexts);
+            _ = PlayStandAsync(name, pick == 0 ? 1 : 2, 0, "");
+            return;
+        }
+
+        // ② 离两侧边缘都远：大概率往回挪（被手动拖回去了就不会触发，因为位置已经贴边）
+        if (AwayFromEdges && !InFocusMode && Random.Shared.NextDouble() < 0.7)
+        {
+            var room = ScreenRoom();
+            var goLeft = room.Left < room.Right;
+            var dist = goLeft ? room.Left : room.Right;
+            Diag($"[edge] 回到边缘 方向={(goLeft ? "左" : "右")} 距离={dist:0}px");
+            StrollOnce(goLeft ? -1 : 1, fast: dist > 320);
+            return;
+        }
+
         if (!_standing)
         {
             if (!_loader.Book.Has(GraphType.Stand)) return;
@@ -830,8 +898,8 @@ public partial class PetWindow : Window
             else
             {
                 SayFrom(StandUpTexts);
-                // 按当前朝向选 sidle / sidle_r，否则朝右时站起来会"翻个面"
-                _ = PlayStandAsync(SideClip("sidle", "sidle_r"), 2, 0, "");
+                // 贴着边时站起来要背对边缘，否则站起来会"面朝屏幕外"
+                _ = PlayStandAsync(NearRightEdge || NearLeftEdge ? InwardClip("sidle") : SideClip("sidle", "sidle_r"), 2, 0, "");
             }
             return;
         }
@@ -862,7 +930,8 @@ public partial class PetWindow : Window
         if (_postureTimer is null) return;
         _postureTimer.Interval = TimeSpan.FromSeconds(ActionLevel switch { 2 => 18, 0 => 28, _ => 22 });
     }
-    private void StrollOnce()
+    /// <summary>溜达一次。forceDir：-1 往左 / +1 往右 / null 自己挑；fast：距离远时用跑。</summary>
+    private void StrollOnce(int? forceDir = null, bool fast = false)
     {
         // 靠近边界时优先往空间大的方向走，避免刚起步就撞墙
         var leftEdge = SystemParameters.VirtualScreenLeft;
@@ -871,23 +940,27 @@ public partial class PetWindow : Window
         var roomRight = rightEdge - (Left + Width);
 
         bool left;
-        if (roomLeft < 120 && roomRight > roomLeft) left = false;
-        else if (roomRight < 120 && roomLeft > roomRight) left = true;
+        if (forceDir is int fd) left = fd < 0;
+        else if (roomLeft < 60 && roomRight > roomLeft) left = false;   // 太贴边了先往外挪一点
+        else if (roomRight < 60 && roomLeft > roomRight) left = true;
+        // 其余情况：更大概率朝"更近的那条边"走（贴边偏好）
+        else if (Random.Shared.NextDouble() < 0.65) left = roomLeft < roomRight;
         else left = Random.Shared.Next(2) == 0;
 
         // 那个方向空间够大、又不是专注模式，才有机会把"走"升级成"跑"，再低概率升级成"飞奔"
         var room = left ? roomLeft : roomRight;
         var runClip = left ? "srun_l" : "srun_r";
         var galClip = left ? "sgal_l" : "sgal_r";
-        var canRun = !InFocusMode && room > Width * 1.8 && _player.HasClip(runClip);
+        var canRun = !InFocusMode && room > Width * 1.2 && _player.HasClip(runClip);
         // 飞奔要的空间更大（2 轮约 370px），概率压得很低，偶尔来个冲刺
-        var canGallop = !InFocusMode && room > Width * 2.6 && _player.HasClip(galClip);
-        var gallop = canGallop && Random.Shared.NextDouble() < 0.12;
-        var run = !gallop && canRun && Random.Shared.NextDouble() < 0.45;
+        var canGallop = !InFocusMode && room > Width * 2.2 && _player.HasClip(galClip);
+        var gallop = !fast && canGallop && Random.Shared.NextDouble() < 0.12;
+        var run = !gallop && canRun && (fast || Random.Shared.NextDouble() < 0.45);
 
-        SayFrom(gallop ? GallopTexts : run ? RunTexts : StrollTexts);
+        // 回边上时别刷"运动一下"的文案，换成"往边上挪"
+        SayFrom(gallop ? GallopTexts : run ? RunTexts : (forceDir is null ? StrollTexts : BackToEdgeTexts));
         _ = PlayStandAsync(gallop ? galClip : run ? runClip : (left ? "swalk_l" : "swalk_r"),
-                           gallop ? 3 : run ? 3 : 5,
+                           gallop ? 3 : run ? 3 : (forceDir is null ? 5 : 2),
                            left ? -1 : 1,
                            "");
     }
@@ -1312,6 +1385,32 @@ public partial class PetWindow : Window
                 {
                     _settings.ChaseIntroSeen = true;
                     StartChase();
+                }));
+            }
+
+            // 测试用：CATPET_EDGETEST=center / right / left
+            //   把猫放到对应位置，然后立刻强制一次姿态轮换，看贴边逻辑怎么走
+            var edgeTest = Environment.GetEnvironmentVariable("CATPET_EDGETEST");
+            if (!string.IsNullOrEmpty(edgeTest))
+            {
+                _ = Task.Delay(2500).ContinueWith(_ => Dispatcher.InvokeAsync(() =>
+                {
+                    var left = SystemParameters.VirtualScreenLeft;
+                    var width = SystemParameters.VirtualScreenWidth;
+                    var x = edgeTest switch
+                    {
+                        "left" => left + 8,
+                        "right" => left + width - Width - 8,
+                        _ => left + width / 2 - Width / 2,
+                    };
+                    Left = x;
+                    _actionBusyUntil = DateTime.MinValue;
+                    _lastInteraction = DateTime.Now.AddSeconds(-30);
+                    // 想测"朝外"的情况：right 时强制朝右、left 时强制朝左
+                    if (edgeTest == "right") _faceRight = true;
+                    if (edgeTest == "left") _faceRight = false;
+                    Diag($"[test] edge={edgeTest} L={Left:0} room={ScreenRoom().Left:0}/{ScreenRoom().Right:0} face={_faceRight}");
+                    ChurnPosture();
                 }));
             }
 

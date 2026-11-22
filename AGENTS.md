@@ -236,7 +236,27 @@ Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" | Where-Object { $_.Co
 
 改走路速度时**必须同步重烘步频**（`)ms = 34.6 / 速度 × 1000 / 30` 附近），否则观感是滑行。
 
-### 5.4 菜单/文案
+### 5.4 贴边偏好（行为规则）
+
+猫倾向于待在屏幕边缘，这是有意为之，改行为时别破坏它：
+
+| 规则 | 实现 |
+| --- | --- |
+| 距边缘 ≤ **96px** 视为"贴着边" | `NearLeftEdge` / `NearRightEdge`（`EdgeComfort`） |
+| 两侧边缘都远于 **260px** 视为"在中间" | `AwayFromEdges`（`EdgeFar`） |
+| 在中间 → 大概率往最近的边挪 | `ChurnPosture` ②：70% 概率 `StrollOnce(方向, fast: 距离>320)` |
+| 贴着边却朝屏幕外 → 转身 | `ChurnPosture` ①：80% 概率播 `InwardClip("slook"/"swag"/"sidle")` |
+| 站着＝背对边缘 | 靠右 → 朝左（`sidle`/`slook`/`swag`）；靠左 → 朝右（`*_r`） |
+
+- **判定只看当前位置，不做额外记忆**：所以"被手动拖回边上"自然就满足条件，不会再跑一次。
+- 站起来时也走 `InwardClip("sidle")`，否则会站起来面朝屏幕外。
+- 普通溜达方向也有 65% 概率朝"更近的那条边"（`StrollOnce` 里）。
+- 测试钩子 `CATPET_EDGETEST=center|right|left`：把猫放到对应位置并立刻强制一次轮换。
+
+> 调试提醒：`Diag(...)` 如果写在 `PlayStandAsync(...)` **之后**，这条日志会丢（实测多次）。
+> 需要看日志就把 `Diag` 放到动作调用**之前**。
+
+### 5.5 菜单/文案
 
 - 站立动作在右键菜单「站立动作」下，轮数写在元组里，改轮数要连菜单项一起改
 - 文案池（`StrollTexts`/`RunTexts`/`JumpMissTexts`…）在 `PetWindow.xaml.cs`，新增文案放进对应池
@@ -252,6 +272,7 @@ Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" | Where-Object { $_.Co
 | `CATPET_CHASE=1` | 启动 1.5s 后自动进小游戏 |
 | `CATPET_WALKTEST=1` | 2s 向左走、4s 切向左跑 |
 | `CATPET_RUNTEST=1` | 5s 点跑、9.5s 点飞奔 |
+| `CATPET_EDGETEST=center\|right\|left` | 把猫放到对应位置并立刻强制一次姿态轮换（验证贴边逻辑） |
 | `CATPET_ZOOM=0.6` | 强制窗口缩放 |
 | `CATPET_NOW=2026-02-17` | 模拟日期（验证节日问候） |
 
