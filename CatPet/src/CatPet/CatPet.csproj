@@ -9,7 +9,7 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <AssemblyName>CatPet</AssemblyName>
     <ApplicationIcon>app.ico</ApplicationIcon>
-    <Version>1.3.2</Version>
+    <Version>1.3.3</Version>
     <Product>猫咪桌宠</Product>
     <Company>essay</Company>
     <Authors>essay</Authors>
