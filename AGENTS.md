@@ -233,6 +233,11 @@ Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" | Where-Object { $_.Co
   `PlaySleepAsync()` = A 一次 → `B` 无限循环；`PlayChainAsync` 默认播完会回待机，
   回待机后画面变成普通 idle，而 `_asleep` 还是 true → 跟随/小动作/姿态轮换全被挡，
   表现为"看着像正常待机但不跟鼠标、点一下才恢复"的假死状态
+- **鼠标在动就算"人在电脑前"**：`TrackMouseActivity()`（60ms tick，累计位移 >40px 才触发，
+  逐 tick ×0.9 衰减）会记 `_mouseActiveUntil = now+3s`，睡着则直接 `Wake()`；
+  `PetGates.CanSleep` 里 `MouseActive` 为真时不打盹。
+  不碰 `_lastInteraction` —— 那个还管着坐姿小动作/姿态轮换，鼠标一动就全压掉会更死板。
+  历史现象：「我一直在动鼠标，猫却闭眼不跟随」= 打盹了（不是卡死），因为旧逻辑只认点击/拖动
 - **睡姿不能循环 `sleep` 的 C 段**：C 只有 6 帧 660ms（`C_End` = 抬头睁眼的过渡），
   循环起来就是"一直点头"。`B_Loop`（18 帧 2.5s）才是呼吸循环，醒来时由
   `PlaySleepWakeAsync()` 播 C 再回待机

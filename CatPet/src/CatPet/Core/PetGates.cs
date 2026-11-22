@@ -22,6 +22,8 @@ public sealed class PetActivity
     public bool StandBusy { get; init; }
     public bool FollowWanted { get; init; } = true;
     public bool FollowPaused { get; init; }
+    /// <summary>最近几秒鼠标在动（人在电脑前），不该打盹。</summary>
+    public bool MouseActive { get; init; }
     public double IdleSeconds { get; init; }
     public double SleepAfterSeconds { get; init; } = 45;
 }
@@ -80,6 +82,7 @@ public static class PetGates
     /// <summary>打盹：注意**站立时不在这里拦**——站立要先坐下来，那条分支在调用方。</summary>
     public static bool CanSleep(PetActivity a)
         => !a.Asleep && !a.Dragging && !a.Busy && !a.Chase && !a.InviteOpen
+           && !a.MouseActive                 // 鼠标在动 = 人在电脑前，别打盹
            && a.HasSleepClip && a.IdleSeconds >= a.SleepAfterSeconds;
 
     /// <summary>小游戏 tick 能不能动（拖拽/缩放/睡眠/隐藏时冻结）。</summary>

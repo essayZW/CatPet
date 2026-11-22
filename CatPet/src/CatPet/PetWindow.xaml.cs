@@ -684,6 +684,48 @@ public partial class PetWindow : Window
     /// 每 100ms 采样鼠标在全屏中的位置，换算成 3×21 网格，并逐格平滑移动。
     /// 以「猫头在屏幕上的位置」为原点，全屏映射到 ±50°，所以鼠标跑到屏幕哪个角落都跟随。
     /// </summary>
+    // ------------------------------------------------------------ 鼠标活动
+
+    /// <summary>鼠标移动累计量（像素，逐 tick 衰减），用来判断"人正在用电脑"。</summary>
+    private double _mouseMoveAccum;
+    private DateTime _mouseActiveUntil = DateTime.MinValue;
+    private int _mouseLastX = int.MinValue;
+    private int _mouseLastY = int.MinValue;
+
+    /// <summary>累计到这么多像素就算一次"互动"（抖动 1~2px 不会触发）。</summary>
+    private const double MouseActivityPx = 40;
+
+    /// <summary>
+    /// 把"鼠标在动"也算成互动：
+    /// 1) 开着头跟随时，用户在动鼠标就说明人在电脑前，不该打盹；
+    /// 2) 已经睡着的话，动鼠标就把它叫醒 —— 否则会出现"我一直在动鼠标，猫却闭眼不跟随"的困惑。
+    /// 只统计"缓慢累积量"，避免指针抖动把猫一直叫醒。
+    /// </summary>
+    private void TrackMouseActivity()
+    {
+        if (!GetCursorPos(out var cursor)) return;
+
+        if (_mouseLastX != int.MinValue)
+        {
+            var dx = cursor.X - _mouseLastX;
+            var dy = cursor.Y - _mouseLastY;
+            _mouseMoveAccum += Math.Sqrt(dx * dx + dy * dy);
+        }
+        _mouseLastX = cursor.X;
+        _mouseLastY = cursor.Y;
+
+        _mouseMoveAccum *= 0.9;               // 衰减：慢慢挪也能累积，停手很快归零
+        if (_mouseMoveAccum < MouseActivityPx) return;
+        _mouseMoveAccum = 0;
+
+        if (!FollowWanted) return;            // 没开跟随：鼠标乱动不代表要理它
+
+        // 记住"人还在电脑前"（3 秒内算活跃）。这里不碰 _lastInteraction：
+        // 它同时管着坐姿小动作和姿态轮换，鼠标一动就把那些全压掉反而更死板。
+        _mouseActiveUntil = DateTime.Now.AddSeconds(3);
+        if (_asleep) Wake();                  // 睡着就睁眼
+    }
+
     private void UpdateHeadFollow()
     {
         // 门禁表在 PetGates.EvaluateFollowGate（有单测）：睡眠 / 站立动作 / 追逐阶段 /
@@ -1286,7 +1328,11 @@ public partial class PetWindow : Window
         _fullscreenTimer.Tick += (_, _) => CheckFullscreen();
 
         _followTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(60) };
-        _followTimer.Tick += (_, _) => UpdateHeadFollow();
+        _followTimer.Tick += (_, _) =>
+        {
+            TrackMouseActivity();     // 鼠标在动 = 人在用电脑：别打盹、睡着要睁眼
+            UpdateHeadFollow();
+        };
 
         _careTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(180) };
         _careTimer.Tick += (_, _) => OnCareTick();
@@ -1582,6 +1628,7 @@ public partial class PetWindow : Window
             Asleep = _asleep, Dragging = _dragging, Busy = ActionBusy,
             Chase = ChaseActive, InviteOpen = InviteOpen,
             HasSleepClip = _loader.Book.Has(GraphType.Sleep),
+            MouseActive = DateTime.Now < _mouseActiveUntil,
             IdleSeconds = (DateTime.Now - _lastInteraction).TotalSeconds,
             SleepAfterSeconds = SleepAfter.TotalSeconds,
         };

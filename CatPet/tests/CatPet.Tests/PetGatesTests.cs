@@ -163,6 +163,15 @@ public class PetGatesTests
         => Assert.False(PetGates.CanSleep(new PetActivity { InviteOpen = true, IdleSeconds = 999, SleepAfterSeconds = 25 }));
 
     [Fact]
+    public void 鼠标在动时不睡()
+        => Assert.False(PetGates.CanSleep(new PetActivity
+        {
+            MouseActive = true,
+            IdleSeconds = 999,
+            SleepAfterSeconds = 25,
+        }));
+
+    [Fact]
     public void 正忙时不睡()
         => Assert.False(PetGates.CanSleep(new PetActivity { Busy = true, IdleSeconds = 999, SleepAfterSeconds = 25 }));
 
