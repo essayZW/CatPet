@@ -323,6 +323,10 @@ git tag -a v1.3.1 -m "1.3.1"
 | 新功能、新动作、新交互（行为变化但不破坏兼容） | minor `x.Y+1.0` | 1.3.1 → 1.4.0 |
 | 不兼容变更（素材规格/配置格式/目录结构大改） | major `X+1.0.0` | 1.4.0 → 2.0.0 |
 
+- **CI 发版**：`.github/workflows/release.yml` 监听 `v*` tag，自动在 `windows-latest` 上
+  跑 `pack.ps1 -WithZip`，把 `CatPet-Setup-<ver>.exe` 和 `CatPet-Portable-<ver>.zip`
+  挂到 GitHub Release。所以"本地打 tag 并 push tag"就等于发版。
+- CI 里没有 `.tools\dotnet`，`pack.ps1` 会退回 PATH 上的 dotnet（`Test-Path $DotnetRoot` 判断）。
 - 版本号来自 csproj 的 `<Version>`，会进安装包文件名与「关于」
 - `pack.ps1` 的 tag 校验可以用 `-SkipTagCheck` 应急跳过，但正式发版必须打 tag
 - 打包脚本会顺手重生成 `app.ico`（`make-icon.ps1`），产出会出现在 `git status` 里，一起提交

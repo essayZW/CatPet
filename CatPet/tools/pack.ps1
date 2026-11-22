@@ -57,8 +57,11 @@ $proj = Join-Path $root 'CatPet\src\CatPet\CatPet.csproj'
 $dist = Join-Path $root 'dist'
 $stage = Join-Path $dist '_publish'
 
-$env:PATH = "$DotnetRoot;$env:PATH"
-$env:DOTNET_ROOT = $DotnetRoot
+# 便携 SDK 优先；CI 里没有 .tools 就直接用 PATH 上的 dotnet
+if (Test-Path $DotnetRoot) {
+    $env:PATH = "$DotnetRoot;$env:PATH"
+    $env:DOTNET_ROOT = $DotnetRoot
+}
 $env:DOTNET_CLI_TELEMETRY_OPTOUT = '1'
 $env:DOTNET_NOLOGO = '1'
 

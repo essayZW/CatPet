@@ -1,0 +1,81 @@
+name: release
+
+# 推一个 v* 的 tag（例如 v1.3.1）就自动：
+#   构建 → 打安装包 + 绿色版 zip → 建 GitHub Release 挂上两个产物
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write        # 建 Release / 上传产物需要
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: 取源码（含 tag，pack.ps1 要校验 tag）
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: 从 tag 取版本号
+        id: meta
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $ver = $tag -replace '^v', ''
+          if ($ver -notmatch '^\d+\.\d+\.\d+') {
+            Write-Error "tag 名不像版本号：$tag（应为 v1.2.3）"
+            exit 1
+          }
+          "version=$ver" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "prerelease=$($tag.Contains('-'))" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          Write-Host "版本：$ver  tag：$tag"
+
+      - name: 安装 .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: 安装 Inno Setup 6
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          Get-ChildItem 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' -ErrorAction SilentlyContinue
+
+      - name: 打包（安装包 + 绿色版 zip）
+        shell: pwsh
+        run: |
+          # pack.ps1 会校验 HEAD 上有 v<版本> 的 tag，CI 里 checkout 的是 tag 本身，正好一致
+          .\CatPet\tools\pack.ps1 -Version '${{ steps.meta.outputs.version }}' -WithZip
+
+      - name: 整理产物名（ASCII，方便下载链接）
+        id: art
+        shell: pwsh
+        run: |
+          $ver = '${{ steps.meta.outputs.version }}'
+          $setup = "dist\CatPet-Setup-$ver.exe"
+          $zipSrc = 'dist\CatPet-绿色版.zip'
+          $zip = "dist\CatPet-Portable-$ver.zip"
+          if (-not (Test-Path $setup)) { Write-Error "没找到 $setup"; exit 1 }
+          if (Test-Path $zipSrc) { Move-Item $zipSrc $zip -Force }
+          "setup=$setup" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "zip=$zip" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          Get-ChildItem dist | Select-Object Name, Length
+
+      - name: 建 Release 并上传产物
+        uses: softprops/action-gh-release@v2
+        with:
+          name: CatPet ${{ steps.meta.outputs.version }}
+          tag_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: ${{ steps.meta.outputs.prerelease }}
+          generate_release_notes: true
+          files: |
+            ${{ steps.art.outputs.setup }}
+            ${{ steps.art.outputs.zip }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

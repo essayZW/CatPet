@@ -25,7 +25,12 @@
 
 ## 安装
 
-从 [Releases](../../releases) 下载 `CatPet-Setup-x.y.z.exe`，双击安装即可（Windows 10/11，自包含运行时，无需装 .NET）。
+从 [Releases](../../releases) 下载：
+
+- `CatPet-Setup-x.y.z.exe` —— 安装包，双击装（Windows 10/11，自包含运行时，无需装 .NET）
+- `CatPet-Portable-x.y.z.zip` —— 绿色版，解压即用
+
+> 推 `v*` tag 会由 GitHub Actions 自动构建并发布这两个产物，见 [`.github/workflows/release.yml`](.github/workflows/release.yml)。
 
 安装完会在开始菜单和桌面留快捷方式，可选择开机自启。
 
