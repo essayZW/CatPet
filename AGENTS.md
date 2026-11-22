@@ -302,13 +302,29 @@ Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" | Where-Object { $_.Co
 
 ---
 
-## 9. 打包
+## 9. 打包（先打 tag，再打包）
 
 ```powershell
-& .\CatPet\tools\pack.ps1          # publish → Inno Setup → dist\CatPet-Setup-<ver>.exe
+# 1) 改版本号
+#    CatPet/src/CatPet/CatPet.csproj 的 <Version>
+# 2) 提交
+git add -A; git commit -m "发版：1.3.1"
+# 3) 打 tag（原名必须和 csproj 版本一致，带 v 前缀）
+git tag -a v1.3.1 -m "1.3.1"
+# 4) 打包（脚本会校验 HEAD 上确实有 v<版本> 这个 tag，否则拒绝）
+& .\CatPet\tools\pack.ps1          # publish -> Inno Setup -> dist\CatPet-Setup-<ver>.exe
 ```
 
-- 版本号来自 `CatPet/src/CatPet/CatPet.csproj` 的 `<Version>`，会进安装包文件名与「关于」
+**版本号怎么升**（按改动大小判断）：
+
+| 变更 | 升法 | 例子 |
+| --- | --- | --- |
+| 修 bug、文案、素材微调（尺寸/亮度对齐等） | patch `x.y.Z+1` | 1.3.0 → 1.3.1 |
+| 新功能、新动作、新交互（行为变化但不破坏兼容） | minor `x.Y+1.0` | 1.3.1 → 1.4.0 |
+| 不兼容变更（素材规格/配置格式/目录结构大改） | major `X+1.0.0` | 1.4.0 → 2.0.0 |
+
+- 版本号来自 csproj 的 `<Version>`，会进安装包文件名与「关于」
+- `pack.ps1` 的 tag 校验可以用 `-SkipTagCheck` 应急跳过，但正式发版必须打 tag
 - 打包脚本会顺手重生成 `app.ico`（`make-icon.ps1`），产出会出现在 `git status` 里，一起提交
 - 产物约 109 MB（自包含 win-x64），`[InstallDelete]` 会清掉旧的 `mod` 和 `cache`
 - **打完不用装**（见铁律 2）

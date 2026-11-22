@@ -18,7 +18,8 @@ param(
     [string]$Iscc = '',
     [switch]$KeepStaging,
     [switch]$WithZip,
-    [switch]$WithSingle
+    [switch]$WithSingle,
+    [switch]$SkipTagCheck              # 应急：跳过"当前提交必须打 tag"的校验
 )
 
 $RepoRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent   # 仓库根目录（CatPet/tools 往上两级）
@@ -35,6 +36,20 @@ if (-not $Version) {
     $Version = if ($m) { $m.Matches[0].Groups[1].Value } else { '1.0.0' }
 }
 Write-Host "版本号: $Version" -ForegroundColor Cyan
+
+# 打包只认"已经打过 tag 的提交"：tag 名形如 v1.3.1，必须和 csproj 版本一致
+if (-not $SkipTagCheck) {
+    $wantTag = "v$Version"
+    $tagsHere = @(git -C $RepoRoot tag --points-at HEAD 2>$null)
+    if ($tagsHere -notcontains $wantTag) {
+        $have = if ($tagsHere.Count -gt 0) { $tagsHere -join ', ' } else { '（无）' }
+        Write-Host "[ERR] 当前提交没有打 tag $wantTag，实际是：$have" -ForegroundColor Red
+        Write-Host '      流程：改 csproj 版本 -> 提交 -> git tag -a v<版本> -m "..." -> 再打包' -ForegroundColor Yellow
+        Write-Host '      应急可加 -SkipTagCheck' -ForegroundColor Yellow
+        exit 1
+    }
+    Write-Host "tag 校验通过: $wantTag" -ForegroundColor Green
+}
 
 # 脚本位于 <仓库>\CatPet\tools\，仓库根目录往上两级
 $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
