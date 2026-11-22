@@ -94,7 +94,10 @@ public partial class PetWindow : Window
     // 新增小动作的文案（描述性，不带喵）
     private static readonly string[] ShakeTexts = { "（抖了抖毛）", "（甩甩头）" };
     private static readonly string[] LookAroundTexts = { "（东张西望）", "（好像听到了什么）", "（四处看看）" };
-    private static readonly string[] GazeTexts = { "（望着窗外发呆）", "（发呆中）" };
+    private static readonly string[] GazeTexts = { "（发呆中……）", "（望着窗外发呆）", "（走神了……）" };
+    // 发呆时如果恰好在犯困时段，换成"困了"的说法
+    private static readonly string[] DrowsyGazeTexts = { "（困了……发会儿呆）", "（眼皮打架，发呆中……）", "（有点困……）" };
+    private static readonly string[] NightGazeTexts = { "（好困……发会儿呆）", "（困得走神了……）", "（眼皮撑不住了……）" };
 
     // 走到屏幕边界时的吐槽
     private static readonly string[] EdgeTexts =
@@ -116,6 +119,17 @@ public partial class PetWindow : Window
     private void SayFrom(string[] pool) => Say(pool[Random.Shared.Next(pool.Length)]);
 
     private void SayFrom(string[] pool, double seconds) => Say(pool[Random.Shared.Next(pool.Length)], seconds);
+
+    /// <summary>
+    /// 发呆的气泡：挂满整段发呆（gaze 3.08s），免得看着像卡住了。
+    /// 深夜/午后的发呆换成"困了"的说法。
+    /// </summary>
+    private void SayGaze()
+    {
+        var h = DateTime.Now.Hour;
+        var pool = (h >= 22 || h < 5) ? NightGazeTexts : (h >= 12 && h < 15) ? DrowsyGazeTexts : GazeTexts;
+        SayFrom(pool, 3.2);
+    }
 
 
     // ------------------------------------------------------------ 调整大小
@@ -1240,9 +1254,9 @@ public partial class PetWindow : Window
                     SayFrom(LookAroundTexts);
                     return;
                 case 7 when _loader.Book.Has(GraphType.Gaze):
-                    PauseFollowFor(3.0);
+                    PauseFollowFor(3.2);
+                    SayGaze();            // 先出气泡，免得看着像卡住
                     _ = _player.PlayGazeAsync();
-                    SayFrom(GazeTexts);
                     return;
                 case 8 when _loader.Book.Has(GraphType.HeadFollow):
                     StartFollowBurst();   // 进入一段"盯着鼠标看"的动作区间
@@ -1401,6 +1415,18 @@ public partial class PetWindow : Window
 
             // 测试用：CATPET_EDGETEST=center / right / left
             //   把猫放到对应位置，然后立刻强制一次姿态轮换，看贴边逻辑怎么走
+            // 测试用：CATPET_GAZETEST=1 启动 3 秒后播一次发呆（验证气泡）
+            if (Environment.GetEnvironmentVariable("CATPET_GAZETEST") == "1")
+            {
+                _ = Task.Delay(3000).ContinueWith(_ => Dispatcher.InvokeAsync(() =>
+                {
+                    Diag($"[test] 发呆 h={DateTime.Now.Hour}");
+                    PauseFollowFor(3.2);
+                    SayGaze();
+                    _ = _player.PlayGazeAsync();
+                }));
+            }
+
             var edgeTest = Environment.GetEnvironmentVariable("CATPET_EDGETEST");
             if (!string.IsNullOrEmpty(edgeTest))
             {

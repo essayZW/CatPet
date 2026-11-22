@@ -266,6 +266,9 @@ Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" | Where-Object { $_.Co
 - 站立动作在右键菜单「站立动作」下，轮数写在元组里，改轮数要连菜单项一起改
 - 文案池（`StrollTexts`/`RunTexts`/`JumpMissTexts`…）在 `PetWindow.xaml.cs`，新增文案放进对应池
 - 气泡时长用秒；退场气泡要挂到窗口消失（3.2s）
+- **发呆（`gaze`）必须配气泡**，否则 3 秒不动会被当成卡死：`SayGaze()` 按小时选池
+  （深夜 22–05 → 「好困……发会儿呆」，午后 12–15 → 「困了……发会儿呆」，其余 → 「发呆中……」），
+  时长 3.2s 覆盖整段动画（`gaze` 28 帧 ≈ 3.08s）
 
 ---
 
@@ -278,6 +281,7 @@ Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" | Where-Object { $_.Co
 | `CATPET_WALKTEST=1` | 2s 向左走、4s 切向左跑 |
 | `CATPET_RUNTEST=1` | 5s 点跑、9.5s 点飞奔 |
 | `CATPET_EDGETEST=center\|right\|left` | 把猫放到对应位置并立刻强制一次姿态轮换（验证贴边逻辑） |
+| `CATPET_GAZETEST=1` | 3 秒后播一次发呆（验证气泡文案/时长） |
 | `CATPET_ZOOM=0.6` | 强制窗口缩放 |
 | `CATPET_NOW=2026-02-17` | 模拟日期（验证节日问候） |
 
