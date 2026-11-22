@@ -637,11 +637,22 @@ public partial class PetWindow : Window
         return _player.PlayStandClipAsync(_faceRight && _player.HasClip("sidle_r") ? "sidle_r" : "sidle", -1);
     }
 
-    /// <summary>按片子名更新朝向：_r 结尾 = 朝右，_l 结尾 = 朝左。</summary>
+    /// <summary>朝左的站立素材名（不带 _l 后缀的这批默认就是朝左）。</summary>
+    private static readonly HashSet<string> LeftFacingClips = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "sidle", "slook", "swag", "sclose", "sjump", "sjump_diag", "sfollow",
+    };
+
+    /// <summary>
+    /// 按片子名更新朝向：`_r` 结尾 = 朝右，`_l` 结尾或"朝左的那批" = 朝左。
+    /// 注意：`sidle` / `slook` / `swag` 这些不带后缀的其实是**朝左**素材，
+    /// 不识别它们就会出现"画面明明朝左、_faceRight 还是 true"，
+    /// 于是头部跟随一接管又切回 sfollow_r（看起来像转身被撤销）。
+    /// </summary>
     private void UpdateFacingFromClip(string clip)
     {
         if (clip.EndsWith("_r", StringComparison.Ordinal)) _faceRight = true;
-        else if (clip.EndsWith("_l", StringComparison.Ordinal)) _faceRight = false;
+        else if (clip.EndsWith("_l", StringComparison.Ordinal) || LeftFacingClips.Contains(clip)) _faceRight = false;
     }
 
     /// <summary>当前是否处于跟随状态：设置里常开，或者处在跟随动作区间内。</summary>

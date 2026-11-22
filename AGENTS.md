@@ -164,6 +164,11 @@ private string SideClip(string left, string right) =>
 历史上漏过的点（已修）：`ChurnPosture` 站起来待机（`sidle`）、站着东张西望（`slook`）、
 右键菜单「站立待机」「闭眼」项。新增任何站姿动作时，先想一句：**朝右时播哪个？**
 
+> **朝向状态**：`UpdateFacingFromClip` 靠片子名判断朝向——`_r` 结尾=朝右，
+> `_l` 结尾**或** `LeftFacingClips`（`sidle`/`slook`/`swag`/`sclose`/`sjump`/`sjump_diag`/`sfollow`）=朝左。
+> 不带后缀的那批其实是朝左素材；漏掉它们会出现"画面朝左但 `_faceRight` 还是 true"，
+> 于是**头部跟随一接管就切回 `sfollow_r`，看着像转身被撤销**。
+
 ---
 
 ## 4. 烘焙流程
