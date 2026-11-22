@@ -10,7 +10,7 @@ import os
 import bpy
 from mathutils import Vector
 
-OUT = r"D:\code\my_pet\artwork\blender"
+OUT = os.path.dirname(os.path.abspath(__file__))
 FRAMES = os.path.join(OUT, "frames_stand3")
 VARIANTS = [("srun_l", 1.0), ("srun_r", 1.0)]   # 摆幅 24/26，左右各一套
 

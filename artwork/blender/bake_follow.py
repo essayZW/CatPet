@@ -10,7 +10,7 @@ import math
 import os
 from mathutils import Vector, Matrix
 
-OUT = r"D:\code\my_pet\artwork\blender"
+OUT = os.path.dirname(os.path.abspath(__file__))
 FRAMES = os.path.join(OUT, "frames_follow")
 os.makedirs(FRAMES, exist_ok=True)
 for f in os.listdir(FRAMES):

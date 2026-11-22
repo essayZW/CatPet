@@ -11,7 +11,7 @@ import os
 import math as _m
 from mathutils import Vector, Matrix
 
-OUT = r"D:\code\my_pet\artwork\blender"
+OUT = os.path.dirname(os.path.abspath(__file__))
 FOLLOW_PREFIX_OUT = os.environ.get("FOLLOW_FRAMES_DIR", "frames_follow_stand")
 FRAMES = os.path.join(OUT, FOLLOW_PREFIX_OUT)
 os.makedirs(FRAMES, exist_ok=True)

@@ -9,7 +9,7 @@ import math
 import os
 from mathutils import Vector
 
-OUT = r"D:\code\my_pet\artwork\blender"
+OUT = os.path.dirname(os.path.abspath(__file__))
 FRAMES = os.path.join(OUT, "frames_stand3")
 
 bpy.ops.wm.open_mainfile(filepath=os.path.join(OUT, "plan_a_rig.blend"))

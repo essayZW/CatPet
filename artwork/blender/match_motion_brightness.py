@@ -21,7 +21,7 @@ import sys
 import numpy as np
 from PIL import Image
 
-MOD = r"D:\code\my_pet\CatPet\src\CatPet\mod\MyCat\pet\cat\stand"
+MOD = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "CatPet", "src", "CatPet", "mod", "MyCat", "pet", "cat", "stand")
 
 # 待改的移动类目录 → 亮度/对比度基准（同侧的站立待机）
 TARGETS = {

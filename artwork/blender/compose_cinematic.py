@@ -16,8 +16,8 @@ import os
 import numpy as np
 from PIL import Image
 
-MOD = r"D:\code\my_pet\CatPet\src\CatPet\mod\MyCat\pet\cat\stand"
-BAKE = r"D:\code\my_pet\artwork\blender\frames_stand3"
+MOD = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "CatPet", "src", "CatPet", "mod", "MyCat", "pet", "cat", "stand")
+BAKE = os.path.join(OUT, "frames_stand3")
 OUT_SCALE = 0.5
 CANVAS = int(500 * OUT_SCALE)
 

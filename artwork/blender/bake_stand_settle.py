@@ -18,7 +18,7 @@ import os
 import bpy
 from mathutils import Vector
 
-OUT = r"D:\code\my_pet\artwork\blender"
+OUT = os.path.dirname(os.path.abspath(__file__))
 FRAMES = os.path.join(OUT, "frames_stand3")
 PREFIX = os.environ.get("SET_PREFIX", "sstand_in")
 AZ = float(os.environ.get("SET_AZ", "45"))

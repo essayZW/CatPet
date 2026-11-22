@@ -7,9 +7,9 @@
     这样项目目录只在"确认导入"的一刻被改动，出图过程中随时可以重来。
 
     默认路径：
-      inbox   D:\code\my_pet\artwork\inbox
-      工程    D:\code\my_pet\CatPet\src\CatPet\mod\MyCat\pet\cat
-      备份    D:\code\my_pet\artwork\backup\<时间戳>\
+      inbox   <repo>\artwork\inbox
+      工程    <repo>\CatPet\src\CatPet\mod\MyCat\pet\cat
+      备份    <repo>\artwork\backup\<时间戳>\
 .EXAMPLE
     # 先干跑，看看会导哪些
     ./import-artwork.ps1 -WhatIf
@@ -19,16 +19,25 @@
     ./import-artwork.ps1
 #>
 param(
-    [string]$Inbox = 'D:\code\my_pet\artwork\inbox',
-    [string]$Target = 'D:\code\my_pet\CatPet\src\CatPet\mod\MyCat\pet\cat',
-    [string]$BackupRoot = 'D:\code\my_pet\artwork\backup',
-    [string]$CatgenDll = 'D:\code\my_pet\CatPet\tools\catgen\bin\Release\net8.0-windows\catgen.dll',
-    [string]$DotnetExe = 'D:\code\my_pet\.tools\dotnet\dotnet.exe',
+    [string]$Inbox = '',
+    [string]$Target = '',
+    [string]$BackupRoot = '',
+    [string]$CatgenDll = '',
+    [string]$DotnetExe = '',
     [int]$Canvas = 1000,
     [switch]$Fit,            # 需要把非 1000×1000 的源图归一化（默认不做，Blender 出来的就是 1000）
     [switch]$NoBackup,
     [switch]$WhatIf
 )
+
+$RepoRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent   # 仓库根目录（CatPet/tools 往上两级）
+
+if (-not $Inbox) { $Inbox = Join-Path $RepoRoot 'artwork\inbox' }
+if (-not $Target) { $Target = Join-Path $RepoRoot 'CatPet\src\CatPet\mod\MyCat\pet\cat' }
+if (-not $BackupRoot) { $BackupRoot = Join-Path $RepoRoot 'artwork\backup' }
+if (-not $CatgenDll) { $CatgenDll = Join-Path $RepoRoot 'CatPet\tools\catgen\bin\Release\net8.0-windows\catgen.dll' }
+if (-not $DotnetExe) { $DotnetExe = Join-Path $RepoRoot '.tools\dotnet\dotnet.exe' }
+
 
 Add-Type -AssemblyName System.Drawing
 $ErrorActionPreference = 'Stop'
@@ -228,5 +237,5 @@ foreach ($key in $Expect.Keys) {
 Write-Host ""
 Write-Host ("导入完成：{0} 帧 → {1}" -f $copied, $Target) -ForegroundColor Cyan
 Write-Host "下一步：重建并清缓存"
-Write-Host '  dotnet build "D:\code\my_pet\CatPet\src\CatPet\CatPet.csproj"'
-Write-Host '  Remove-Item -Recurse -Force "D:\code\my_pet\CatPet\src\CatPet\bin\Debug\net8.0-windows\cache"'
+Write-Host '  dotnet build <repo>\CatPet\src\CatPet\CatPet.csproj'
+Write-Host '  Remove-Item -Recurse -Force <repo>\CatPet\src\CatPet\bin\Debug\net8.0-windows\cache'

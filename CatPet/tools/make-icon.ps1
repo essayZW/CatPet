@@ -1,8 +1,14 @@
 ﻿# 从形象帧生成 app.ico（多尺寸），供 exe 图标 / 安装包使用
 param(
-    [string]$Frame = 'D:\code\my_pet\CatPet\src\CatPet\mod\MyCat\pet\cat\idle\idle_000_100.png',
-    [string]$Out = 'D:\code\my_pet\CatPet\src\CatPet\app.ico'
+    [string]$Frame = '',
+    [string]$Out = ''
 )
+
+$RepoRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent   # 仓库根目录（CatPet/tools 往上两级）
+
+if (-not $Frame) { $Frame = Join-Path $RepoRoot 'CatPet\src\CatPet\mod\MyCat\pet\cat\idle\idle_000_100.png' }
+if (-not $Out) { $Out = Join-Path $RepoRoot 'CatPet\src\CatPet\app.ico' }
+
 
 Add-Type -AssemblyName System.Drawing
 

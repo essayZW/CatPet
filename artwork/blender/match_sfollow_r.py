@@ -12,7 +12,7 @@ import os
 import numpy as np
 from PIL import Image
 
-MOD = r"D:\code\my_pet\CatPet\src\CatPet\mod\MyCat\pet\cat\stand"
+MOD = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "CatPet", "src", "CatPet", "mod", "MyCat", "pet", "cat", "stand")
 REF = os.path.join(MOD, "sfollow")
 TARGET_DIR = os.path.join(MOD, "sfollow_r")
 CANVAS = 330

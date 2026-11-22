@@ -23,7 +23,7 @@
 
 ```powershell
 # 或者命令行
-$env:PATH = "D:\code\my_pet\.tools\dotnet;$env:PATH"
+$env:PATH = "<repo>\.tools\dotnet;$env:PATH"
 dotnet build .\src\CatPet\CatPet.csproj
 .\run.cmd
 ```
@@ -980,7 +980,7 @@ CatPet/src/CatPet/mod/MyCat/pet/cat/  程序实际读取的素材
 跑法（Blender 5.x）：
 
 ```powershell
-$bl = "D:\Program Files\Blender Foundation\Blender 5.3\blender.exe"
+$bl = "<Blender>\blender.exe"
 & $bl -b --python artwork\blender\prep.py     # 减面，约 1 分钟
 & $bl -b --python artwork\blender\rig.py      # 绑骨，约 30 秒
 & $bl -b --python artwork\blender\bake.py     # 全部动作，约 1 分钟

@@ -17,7 +17,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from jump_keys import sample_frames
 
-OUT = r"D:\code\my_pet\artwork\blender"
+OUT = os.path.dirname(os.path.abspath(__file__))
 FRAMES = os.path.join(OUT, "frames_stand3")
 PREFIX = os.environ.get("JUMP_PREFIX", "sjump")
 AZ = float(os.environ.get("JUMP_AZ", "25"))

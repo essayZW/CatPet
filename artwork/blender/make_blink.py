@@ -9,7 +9,7 @@ import os
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-ROOT = r"D:\code\my_pet"
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 MOD = os.path.join(ROOT, r"CatPet\src\CatPet\mod\MyCat\pet\cat")
 OPEN = os.path.join(MOD, r"idle\idle_000_100.png")
 CLOSED = os.path.join(ROOT, r"artwork\blender\closed_glb_1000.png")

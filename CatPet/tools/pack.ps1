@@ -14,12 +14,17 @@ param(
     [string]$Configuration = 'Release',
     [string]$Runtime = 'win-x64',
     [string]$Version = '',
-    [string]$DotnetRoot = 'D:\code\my_pet\.tools\dotnet',
+    [string]$DotnetRoot = '',
     [string]$Iscc = '',
     [switch]$KeepStaging,
     [switch]$WithZip,
     [switch]$WithSingle
 )
+
+$RepoRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent   # 仓库根目录（CatPet/tools 往上两级）
+
+if (-not $DotnetRoot) { $DotnetRoot = Join-Path $RepoRoot '.tools\dotnet' }
+
 
 $ErrorActionPreference = 'Stop'
 

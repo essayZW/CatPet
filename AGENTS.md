@@ -169,7 +169,7 @@ private string SideClip(string left, string right) =>
 ## 4. 烘焙流程
 
 ```powershell
-$bl = "D:\Program Files\Blender Foundation\Blender 5.3\blender.exe"
+$bl = "<Blender>\blender.exe"
 $env:W45_PREFIX="swalk_l"; $env:W45_AZ="90"; $env:W45_N="30"; $env:W45_MS="24"
 & $bl -b --python artwork/blender/bake_stand_walk_angle.py
 ```
@@ -199,8 +199,8 @@ Remove-Item -Recurse -Force .\CatPet\src\CatPet\bin\Debug\net8.0-windows\cache
 ### 5.1 构建与运行
 
 ```powershell
-$env:PATH = "D:\code\my_pet\.tools\dotnet;$env:PATH"
-$env:DOTNET_ROOT = "D:\code\my_pet\.tools\dotnet"
+$env:PATH = "<repo>\.tools\dotnet;$env:PATH"
+$env:DOTNET_ROOT = "<repo>\.tools\dotnet"
 dotnet build .\CatPet\src\CatPet\CatPet.csproj -c Debug
 # 运行（不要直接 CatPet.exe，走 dll 更稳）
 Start-Process "$env:DOTNET_ROOT\dotnet.exe" -ArgumentList 'CatPet.dll' -WorkingDirectory .\CatPet\src\CatPet\bin\Debug\net8.0-windows
@@ -260,7 +260,18 @@ Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" | Where-Object { $_.Co
 
 ---
 
-## 7. PowerShell 自动化注意事项
+## 7. 路径与隐私
+
+- **不要写死绝对路径**。Python 用 `os.path.dirname(os.path.abspath(__file__))` 推导，
+  PowerShell 用 `$RepoRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent`，
+  文档里用 `<repo>` / `<Blender>` 这类占位。
+- `param()` 里的默认值不能引用 `$RepoRoot`（绑定早于赋值），默认留空、在 param 之后再赋值。
+- 提交前扫一遍：`git grep -nE '[A-Z]:\\\\(code|Users|Program Files)'` 应为空。
+- 截图只截宠物窗口区域，避免带上桌面/任务栏/其他程序。
+
+---
+
+## 8. PowerShell 自动化注意事项
 
 - 脚本文件必须存成 **UTF-8 with BOM**，否则 Windows PowerShell 5.1 读中文会语法错误
 - 多行字符串 + 引号通过 `-File` 传参容易被破坏：优先用文件写入（`[IO.File]::WriteAllText`）
@@ -270,7 +281,7 @@ Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" | Where-Object { $_.Co
 
 ---
 
-## 8. 打包
+## 9. 打包
 
 ```powershell
 & .\CatPet\tools\pack.ps1          # publish → Inno Setup → dist\CatPet-Setup-<ver>.exe
@@ -283,7 +294,7 @@ Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" | Where-Object { $_.Co
 
 ---
 
-## 9. 提交规范
+## 10. 提交规范
 
 - **身份用全局配置**：`git config --global user.name / user.email`。
   不要在仓库里设 `user.name`/`user.email`（`--local`），也不要用 `git -c user.name=…` 临时覆盖。
@@ -293,7 +304,7 @@ Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" | Where-Object { $_.Co
 
 ---
 
-## 10. 已知限制
+## 11. 已知限制
 
 - 只支持 Windows（WPF、透明置顶窗口、`SetWindowDisplayAffinity`）
 - 缩放上限 2.0、下限 0.25；素材按 330px 烘焙，缩到 2 倍会略糊

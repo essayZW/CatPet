@@ -21,19 +21,19 @@ artwork\
 
 ```powershell
 # 出基准图
-python D:\code\my_pet\artwork\gpt\gen.py base
+python <repo>\artwork\gpt\gen.py base
 
 # 出全部动作帧（跳过已存在的）
-python D:\code\my_pet\artwork\gpt\gen.py frames --base D:\code\my_pet\CatPet\assets\base\cat-base.png
+python <repo>\artwork\gpt\gen.py frames --base <repo>\CatPet\assets\base\cat-base.png
 
 # 只出某个动作
-python D:\code\my_pet\artwork\gpt\gen.py frames --base ... --only say
+python <repo>\artwork\gpt\gen.py frames --base ... --only say
 
 # 导入前干跑
-powershell -ExecutionPolicy Bypass -File D:\code\my_pet\CatPet\tools\import-artwork.ps1 -WhatIf
+powershell -ExecutionPolicy Bypass -File <repo>\CatPet\tools\import-artwork.ps1 -WhatIf
 
 # 正式导入（自动备份 + 归一化 + 校验）
-powershell -ExecutionPolicy Bypass -File D:\code\my_pet\CatPet\tools\import-artwork.ps1
+powershell -ExecutionPolicy Bypass -File <repo>\CatPet\tools\import-artwork.ps1
 ```
 
-完整规格见 `D:\code\my_pet\docs\SKILL-猫咪桌宠素材.md`。
+完整规格见 `<repo>\docs\SKILL-猫咪桌宠素材.md`。

@@ -7,16 +7,18 @@
     检查项与当前形象的动作集对齐：待机(含眨眼) / 喵叫 A-B-C / 转头 A-B-C。
 .EXAMPLE
     # 校验工程内素材（默认 500x500）
-    ./validate-frames.ps1 -Dir D:\code\my_pet\CatPet\src\CatPet\mod\MyCat\pet\cat
+    ./validate-frames.ps1 -Dir <repo>\CatPet\src\CatPet\mod\MyCat\pet\cat
 .EXAMPLE
     # 校验模型刚出的原始产物（尺寸不固定，跳过尺寸检查）
-    ./validate-frames.ps1 -Dir D:\code\my_pet\artwork\inbox -Canvas 0
+    ./validate-frames.ps1 -Dir <repo>\artwork\inbox -Canvas 0
 #>
 param(
     [Parameter(Mandatory = $true)][string]$Dir,
     [int]$Canvas = 500,
     [switch]$Strict
 )
+
+$RepoRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent   # 仓库根目录（CatPet/tools 往上两级）
 
 Add-Type -AssemblyName System.Drawing
 $ErrorActionPreference = 'Stop'

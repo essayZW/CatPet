@@ -13,7 +13,8 @@ import sys
 
 from PIL import Image
 
-MOD = r"D:\code\my_pet\CatPet\src\CatPet\mod\MyCat\pet\cat"
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+MOD = os.path.join(REPO, "CatPet", "src", "CatPet", "mod", "MyCat", "pet", "cat")
 TARGET = 330
 
 dry = "--dry-run" in sys.argv

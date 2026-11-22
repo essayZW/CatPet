@@ -12,7 +12,7 @@ import os
 import bpy
 from mathutils import Vector
 
-OUT = r"D:\code\my_pet\artwork\blender"
+OUT = os.path.dirname(os.path.abspath(__file__))
 FRAMES = os.path.join(OUT, "frames_stand3")
 PREFIX = os.environ.get("WAG_PREFIX", "swag_r")
 AZ = float(os.environ.get("WAG_AZ", "-25"))
