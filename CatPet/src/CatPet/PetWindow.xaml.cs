@@ -1550,6 +1550,8 @@ public partial class PetWindow : Window
                 {
                     "swag" => SideClip("swag", "swag_r"),
                     "slook" => SideClip("slook", "slook_r"),
+                    "sidle" => SideClip("sidle", "sidle_r"),
+                    "sclose" => SideClip("sclose", "sclose_r"),
                     _ => name,
                 },
                 loops, dir, text);

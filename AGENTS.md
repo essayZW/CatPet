@@ -128,12 +128,40 @@ gain = 待机平均亮度 / 本段平均亮度     # 限制在 0.8 ~ 1.45
 
 只做整段常数增益，**不要逐帧调整**，否则会闪。
 
-### 3.4 颜色/亮度自检
+### 3.4 移动类素材的亮度/对比度
+
+站姿移动类（走/跑/飞奔/跳/斜跳）是在正侧机位（az=90/270）烘的，比 3/4 待机暗很多：
+
+| 素材 | 改前均值 | 改后 | 对比度（改前→改后 / 目标） |
+| --- | --- | --- | --- |
+| `swalk_l` 等左向 | 156 | **170.3** | 34.8 → 34.6 / 34.4 |
+| `swalk_r` 等右向 | 142 | **170.6** | 24.5 → 27.7 / 35.1 |
+
+一条命令搞定，幂等：
 
 ```powershell
-# 运镜素材与待机的接缝
-python artwork/blender/…        # 见 docs/dev-notes.md「运镜对齐待机」一节
+python artwork/blender/match_motion_brightness.py --dry-run   # 先看参数
+python artwork/blender/match_motion_brightness.py             # 实际执行
 ```
+
+算法：先用 **gamma** 把平均亮度对齐到同侧待机（0/255 不动，高光不糊），
+再用**线性对比度**把 std 拉向目标（限制在 0.75~1.35）。每个目录一组常数参数，整段共用，不会逐帧闪。
+
+> 右侧背光片源对比度本身只有 24.5，拉到 27.7 已到线性拉伸上限；再拉会显得发灰/发假，所以不再追。
+> 改完记得跑 `validate-frames.ps1`，并清 `bin\Debug\...\cache` 再验证。
+
+### 3.5 左右两套素材的完整性
+
+站姿一共 **12 对**（`sidle/slook/swag/sclose/sfollow/sjump/sjump_diag/走/跑/飞奔/进出场运镜`），
+素材层面左右齐全；**缺的往往在代码**——凡是"按朝向该换边"的地方都必须走 `SideClip(left, right)`：
+
+```csharp
+private string SideClip(string left, string right) =>
+    _faceRight && _player.HasClip(right) ? right : left;
+```
+
+历史上漏过的点（已修）：`ChurnPosture` 站起来待机（`sidle`）、站着东张西望（`slook`）、
+右键菜单「站立待机」「闭眼」项。新增任何站姿动作时，先想一句：**朝右时播哪个？**
 
 ---
 
