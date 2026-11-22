@@ -285,6 +285,8 @@ Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" | Where-Object { $_.Co
 
 ## 9. 提交规范
 
+- **身份用全局配置**：`git config --global user.name / user.email`。
+  不要在仓库里设 `user.name`/`user.email`（`--local`），也不要用 `git -c user.name=…` 临时覆盖。
 - 提交信息用中文，格式：`修/新增/文档：一句话` + 正文写清根因与实测数据
 - 一次提交只做一件事；素材换代和逻辑修复分开
 - 提交前：`validate-frames.ps1` 0 失败、`git status` 无遗漏
