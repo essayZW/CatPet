@@ -30,11 +30,12 @@ jobs:
         id: meta
         shell: pwsh
         run: |
-          $tag = "${{ github.ref_name }}"
+          $tag = "${{ inputs.tag }}"
+          if (-not $tag) { $tag = "${{ github.ref_name }}" }
           if ($tag -match '^v') {
             $ver = $tag -replace '^v', ''
           } else {
-            # 手动触发：用 csproj 里的 <Version>，并找出对应的 tag
+            # 手动触发且没填 tag：用 csproj 里的 <Version>
             $line = Select-String -Path 'CatPet\src\CatPet\CatPet.csproj' -Pattern '<Version>([^<]+)</Version>' | Select-Object -First 1
             $ver = $line.Matches[0].Groups[1].Value
             $tag = "v$ver"
