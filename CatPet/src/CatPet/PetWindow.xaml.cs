@@ -683,35 +683,36 @@ public partial class PetWindow : Window
     /// </summary>
     private void UpdateHeadFollow()
     {
-        if (_asleep)
+        // 门禁表在 PetGates.EvaluateFollowGate（有单测）：睡眠 / 站立动作 / 追逐阶段 /
+        // 该结束（隐藏·关设置·拖动·缩放）/ 动作暂停，各自的处理方式不同。
+        var gate = PetGates.EvaluateFollowGate(new PetActivity
         {
-            // 睡眠中：只复位跟随状态，不要走 EndHeadFollow（它会播待机、把打盹顶掉）
-            _followActive = false;
-            _followCol = FollowNeutralCol;
-            _followRow = 2;
-            return;
+            Asleep = _asleep,
+            Dragging = _dragging,
+            Resizing = _resizeMode,
+            Visible = Visibility == Visibility.Visible,
+            Chase = ChaseActive,
+            ChaseNear = _chaseNear,
+            StandBusy = StandBusy,
+            FollowWanted = FollowWanted,
+            FollowPaused = DateTime.Now < _followPausedUntil,
+        });
+
+        switch (gate)
+        {
+            case FollowGate.ResetOnly:
+                // 睡眠中：只复位跟随状态，不要走 EndHeadFollow（它会播待机、把打盹顶掉）
+                _followActive = false;
+                _followCol = FollowNeutralCol;
+                _followRow = 2;
+                return;
+            case FollowGate.Blocked:
+                return;
+            case FollowGate.EndFollow:
+                EndHeadFollow();
+                return;
         }
 
-        // 站立动作（走/跑/飞奔/跳/摇尾巴…）进行中，跟随不许抢画面：
-        // 抢了就会看到"猫停下来看你、窗口却还在滑"，跑一半也会被截断
-        if (StandBusy)
-            return;
-
-        // 小游戏里"追逐"阶段不要插手：那时画面归步态，跟随只在 _chaseNear（停下来看）时才该出现。
-        // 否则两边会互相抢帧、互相 Start/StopWalk，看着就是"猫不走路、窗口却在滑"。
-        if (ChaseActive && !_chaseNear)
-            return;
-
-        if (!FollowWanted || _dragging || _resizeMode || Visibility != Visibility.Visible)
-        {
-            EndHeadFollow();
-            return;
-        }
-
-        // 正在播动作（比如站立摸头）：跟随彻底让位。这里连 EndHeadFollow 都不能调，
-        // 否则它会顺手播一次待机，把刚起来的动作顶掉。
-        if (DateTime.Now < _followPausedUntil)
-            return;
         if (!_loader.Book.Has(GraphType.HeadFollow) || !GetCursorPos(out var cursor))
             return;
 
@@ -855,9 +856,13 @@ public partial class PetWindow : Window
         if (ActionBusy) return;
         // 待机时小概率发起"一起玩"的邀约（专注模式/冷却中不会触发）
         if (MaybeInvite()) return;
-        if (_dragging || _asleep || _resizeMode || StandBusy) return;
-        if (DateTime.Now - _lastInteraction < TimeSpan.FromSeconds(18)) return;
-        if (Visibility != Visibility.Visible) return;
+        // 姿态轮换门禁见 PetGates.CanChurn（有单测）
+        if (!PetGates.CanChurn(new PetActivity
+            {
+                Asleep = _asleep, Dragging = _dragging, Resizing = _resizeMode, StandBusy = StandBusy,
+                Chase = ChaseActive, Visible = Visibility == Visibility.Visible,
+                IdleSeconds = (DateTime.Now - _lastInteraction).TotalSeconds,
+            })) return;
 
         var level = ActionLevel;
 
@@ -1183,9 +1188,12 @@ public partial class PetWindow : Window
         _idleTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(14) };
         _idleTimer.Tick += (_, _) =>
         {
-            if (_dragging || _asleep || _standing) return;                   // 站立中不插播坐姿小动作
-            if (ActionBusy) return;                                          // 上一个小动作还没播完
-            if (DateTime.Now - _lastInteraction < TimeSpan.FromSeconds(6)) return;  // 刚被逗过，先别自娱自乐
+            // 能不能演小动作见 PetGates.CanIdleAction（有单测）
+            if (!PetGates.CanIdleAction(new PetActivity
+                {
+                    Asleep = _asleep, Standing = _standing, Dragging = _dragging, Busy = ActionBusy,
+                    IdleSeconds = (DateTime.Now - _lastInteraction).TotalSeconds,
+                })) return;
 
             var roll = IdleRoll();
 
@@ -1563,16 +1571,15 @@ public partial class PetWindow : Window
     /// <summary>很久没交互 → 打盹。</summary>
     private void CheckSleep()
     {
-        // 小游戏进行中不打盹（否则会"站累了坐会儿"把追逐打断）
-        if (ChaseActive || InviteOpen) return;
-        if (ActionBusy) return;   // 小动作播到一半别突然坐下/睡着
-        if (_asleep || _dragging)
-            return;
-        if (DateTime.Now - _lastInteraction < SleepAfter)
-            return;
-        if (!_loader.Book.Has(GraphType.Sleep))
-            return;
-
+        // 打盹门禁见 PetGates.CanSleep（有单测）；站立时的"先坐下来"分支留在下面
+        if (!PetGates.CanSleep(new PetActivity
+            {
+                Asleep = _asleep, Dragging = _dragging, Busy = ActionBusy,
+                Chase = ChaseActive, InviteOpen = InviteOpen,
+                HasSleepClip = _loader.Book.Has(GraphType.Sleep),
+                IdleSeconds = (DateTime.Now - _lastInteraction).TotalSeconds,
+                SleepAfterSeconds = SleepAfter.TotalSeconds,
+            })) return;
         // 站立姿态下不插播坐姿睡觉：先坐回去，之后的打盹走正常流程
         if (_standing)
         {
