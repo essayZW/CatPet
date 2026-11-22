@@ -320,6 +320,10 @@ git tag -a v1.3.1 -m "1.3.1"
 & .\CatPet\tools\pack.ps1          # publish -> Inno Setup -> dist\CatPet-Setup-<ver>.exe
 ```
 
+**tag 规则：只增不改。** tag 一旦创建就固定在那次提交上，**任何情况下都不要 `git tag -f` 移动它**
+（移动 tag 等于改写历史，已经推出去的 tag 还会导致本地/远端不一致）。
+要发新内容就递增版本号、打一个新 tag。
+
 **版本号怎么升**（按改动大小判断）：
 
 | 变更 | 升法 | 例子 |
