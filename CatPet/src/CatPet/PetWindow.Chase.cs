@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
+using CatPet.Core;
 
 namespace CatPet;
 
@@ -18,9 +19,9 @@ namespace CatPet;
 public partial class PetWindow
 {
     // ---------------- 区间与上限
-    private const double NearZone = 165;      // 横向这个范围内进入「看着鼠标」模式（仅在不追的时候）
-    private const double MaxChaseSpeed = 480; // 追得再急也不超过这个速度
-    private const int CatchGraceMs = 800;     // 进入小游戏后至少这么久才会判定"抓到"
+    private const double NearZone = ChaseRules.NearZone;      // 横向这个范围内进入「看着鼠标」模式
+    private const double MaxChaseSpeed = ChaseRules.MaxChaseSpeed; // 追得再急也不超过这个速度
+    private const int CatchGraceMs = (int)ChaseRules.CatchGraceMs; // 进游戏后至少这么久才判"抓到"
     private const int CelebrateMs = 1500;     // 抓到后摇尾巴的时间（这期间不跑）
     private const int CatchCooldownMs = 2600; // 抓到后的冷却，避免贴着鼠标反复触发
 
@@ -58,8 +59,8 @@ public partial class PetWindow
     private DateTime _chaseJumpMissUntil = DateTime.MinValue;   // "差一点"文案的节流
     private bool _chaseCantReachTold;                        // 这次"够不着"已经说过没有
     private double _chaseCantReachAtX, _chaseCantReachAtY;   // 说的时候鼠标在哪
-    private const double JumpTriggerDy = 140;                // 鼠标高出这么多就起跳
-    private const double MaxJumpPeak = 230;                  // 跳跃高度上限
+    private const double JumpTriggerDy = ChaseRules.JumpTriggerDy;   // 鼠标高出这么多就起跳
+    private const double MaxJumpPeak = ChaseRules.MaxJumpPeak;       // 跳跃高度上限
     private const int JumpFlightMs = 700;                    // 空中时间（放慢，看着不那么急）
     private const int JumpCrouchMs = 240;                    // 原地跳的蓄力时间（蹲下再起跳，约两帧）
     private const int JumpCrouchMsDiag = 100;                // 斜向跳的简短蓄力
@@ -291,11 +292,8 @@ public partial class PetWindow
 
         // "抓到"按身体接触算：把猫身看成一个椭圆（半宽略小于窗口宽，半高略小于宠物体高），
         // 鼠标进入椭圆才算贴上，避免还差一截就判定抓到
-        var halfW = Math.Max(20.0, Width * 0.42);
-        var halfH = Math.Max(20.0, petHeight * 0.40);
-        var nx = delta / halfW;
-        var ny = deltaY / halfH;
-        var touching = nx * nx + ny * ny <= 1.0;
+        var (halfW, halfH) = ChaseRules.BodyEllipse(Width, petHeight);
+        var touching = ChaseRules.IsTouching(delta, deltaY, halfW, halfH);
 
         if (++_chaseTicks % 10 == 0)
             Diag($"chase tick: mouse=({mouseX:0},{mouseY:0}) left={Left:0} dist={dist:0} dy={deltaY:0} touch={touching} speed={_chaseSpeed:0} clip={_chaseClip} dir={_chaseDir} near={_chaseNear} face={_faceRight} stand={_standing}");
@@ -327,10 +325,10 @@ public partial class PetWindow
 
         // ---------- 1) 抓到了：正在追 + 身体贴上
         // 鼠标自己凑过来（没在追）不算抓到，那是"看着鼠标"模式
-        if (touching
-            && _chaseDir != 0
-            && (now - _chaseStartedAt).TotalMilliseconds > CatchGraceMs
-            && now > _chaseCatchCooldownUntil)
+        if (ChaseRules.CanCatch(touching,
+                chasing: _chaseDir != 0,
+                sinceStartMs: (now - _chaseStartedAt).TotalMilliseconds,
+                cooldownPassed: now > _chaseCatchCooldownUntil))
         {
             Catch();
             return;
@@ -342,7 +340,7 @@ public partial class PetWindow
         // 正在追的时候不进这个分支：要让猫一路贴近到身体接触，否则永远抓不到
         // 纵向差太大也不算"近"：鼠标在头顶老高时要走跳跃分支
         // 只有已经停下（没有位移）才进入"盯着你看"；移动中一律优先继续走到鼠标下方
-        if (_chaseDir == 0 && _walkTimer is null && dist <= NearZone && Math.Abs(deltaY) <= JumpTriggerDy)
+        if (ChaseRules.ShouldWatchMouse(_chaseDir == 0 && _walkTimer is null, dist, deltaY))
         {
             EnterNearMode(delta);
             return;
@@ -350,7 +348,7 @@ public partial class PetWindow
 
         // ---------- 2.4) 鼠标在下方且横向很近：猫下不去，站住低头看
         // （不加这条会掉进"追→贴边→换向"的循环：鼠标正在身子底下时 dir 每拍都在翻）
-        if (_chaseDir == 0 && _walkTimer is null && deltaY > JumpTriggerDy && dist <= NearZone)
+        if (ChaseRules.ShouldWatchBelow(_chaseDir == 0 && _walkTimer is null, dist, deltaY))
         {
             EnterNearMode(delta);
             return;
@@ -358,27 +356,25 @@ public partial class PetWindow
 
         // ---------- 2.5) 鼠标在上方够远：扑一次（够不着就站住抬头）
 
-        if (deltaY < -JumpTriggerDy && Math.Abs(delta) <= 420
-            && now > _chaseJumpCooldownUntil && now > _chaseCelebrateUntil)
+        if (ChaseRules.ShouldConsiderJump(deltaY, delta,
+                jumpCooldownPassed: now > _chaseJumpCooldownUntil && now > _chaseCelebrateUntil))
         {
             var dirToMouse = delta > 0 ? 1 : -1;
             var edgeL = SystemParameters.VirtualScreenLeft;
             var edgeR = edgeL + SystemParameters.VirtualScreenWidth;
             var canMoveX = (dirToMouse > 0 && Left + Width < edgeR - 8) || (dirToMouse < 0 && Left > edgeL + 8);
 
-            // 不用跳到鼠标中心：身体椭圆有半高，跳低一点更自然
-            var need = Math.Max(90, -deltaY - 45);
+            var need = ChaseRules.JumpNeed(deltaY);
             var spaceAbove = Top - SystemParameters.VirtualScreenTop;
-            var tooHigh = need > MaxJumpPeak || spaceAbove < Math.Min(need, MaxJumpPeak) + 24;
-            var cantDoIt = tooHigh || _chaseJumpTries >= 2 || _chaseJumpNeedsMove;
+            var decision = ChaseRules.DecideJump(deltaY, dist, canMoveX, _chaseJumpTries, _chaseJumpNeedsMove, spaceAbove);
 
             // 够不着、但横向还有距离：先走近再试，别站在老远就放弃
             // （不然会出现"走到一半停下说够不着"，或者"离得远却原地跳"）
-            if (cantDoIt && dist > NearZone * 0.7 && canMoveX)
+            if (decision == JumpDecision.ApproachFirst)
             {
                 // 落到下面的追逐逻辑
             }
-            else if (cantDoIt)
+            else if (decision == JumpDecision.GiveUp)
             {
                 if (!_chaseCantReachTold)
                 {
@@ -386,7 +382,7 @@ public partial class PetWindow
                     _chaseCantReachAtX = mouseX;
                     _chaseCantReachAtY = mouseY;
                     Say("（够不着喵）", 2);
-                    Diag($"chase: jump give-up dy={deltaY:0} need={need:0} tooHigh={tooHigh} tries={_chaseJumpTries} needsMove={_chaseJumpNeedsMove} dist={dist:0}");
+                    Diag($"chase: jump give-up dy={deltaY:0} need={need:0} tooHigh={ChaseRules.TooHigh(need, spaceAbove)} tries={_chaseJumpTries} needsMove={_chaseJumpNeedsMove} dist={dist:0}");
                 }
                 // 还没走到鼠标下方就继续走（停下盯人只在"已经到位"时才做），
                 // 否则会出现"移动中突然站着看你、窗口还在滑"
@@ -409,10 +405,9 @@ public partial class PetWindow
                 return;
             }
         }
-
         // ---------- 3) 追
         // 已经站到鼠标正下方（横向差很小）：先停下，别在原地来回蹭
-        if (dist < 26 && _chaseDir != 0)
+        if (ChaseRules.ShouldStopAtMouse(dist, _chaseDir != 0))
         {
             StopWalk("到位");
             _chaseDir = 0;
@@ -422,9 +417,7 @@ public partial class PetWindow
         }
         ExitNearMode();
         // 方向死区：鼠标几乎在正前方/正后方时别来回翻面
-        var dir = _chaseDir != 0 && Math.Abs(delta) < 24
-            ? _chaseDir
-            : (delta > 0 ? 1 : -1);
+        var dir = ChaseRules.DirectionFor(delta, _chaseDir);
 
         // 已经贴在鼠标那一侧的屏幕边缘：站住等它往回走
         var leftEdge = SystemParameters.VirtualScreenLeft;
@@ -447,11 +440,9 @@ public partial class PetWindow
 
         // 目标速度：距离越远越快；鼠标横向甩得快也加一点；
         // 超过 430（飞奔档）之后还有一小段额外加速，但封顶 MaxChaseSpeed
-        var raw = dist * 1.1 + Math.Abs(_chaseMouseVel) * 0.45;
-        var target = Math.Clamp(raw, 34.0, MaxChaseSpeed);
+        var target = ChaseRules.TargetSpeed(dist, _chaseMouseVel);
         // 速度平滑：加速/减速都不突变
-        _chaseSpeed += (target - _chaseSpeed) * 0.20;
-        if (_chaseSpeed < 10) _chaseSpeed = 10;
+        _chaseSpeed = ChaseRules.SmoothSpeed(_chaseSpeed, target);
 
         if (dir != _chaseDir)
         {
@@ -655,16 +646,14 @@ public partial class PetWindow
     /// <summary>速度 → 步态（带滞回，避免在阈值附近来回切）。</summary>
     private string GaitClip(double speed, int dir)
     {
+        // 步态与滞回在 ChaseRules.GaitFor（有单测）；这里只处理"素材缺失就降级"
+        var current = _chaseClip.StartsWith("sgal", StringComparison.Ordinal) ? ChaseGait.Gallop
+                    : _chaseClip.StartsWith("srun", StringComparison.Ordinal) ? ChaseGait.Run
+                    : ChaseGait.Walk;
+        var wanted = ChaseRules.GaitClip(ChaseRules.GaitFor(speed, current), dir);
+        if (_player.HasClip(wanted)) return wanted;
+
         var suffix = dir > 0 ? "r" : "l";
-        var current = _chaseClip;
-
-        // 滞回：已经在小跑就别因为速度掉到 110 以下立刻切回走，留 25 的余量
-        var walkMax = current.StartsWith("srun", StringComparison.Ordinal) ? 165.0 : 140.0;
-        var runMax = current.StartsWith("sgal", StringComparison.Ordinal) ? 345.0 : 320.0;
-
-        if (speed <= walkMax && _player.HasClip($"swalk_{suffix}")) return $"swalk_{suffix}";
-        if (speed <= runMax && _player.HasClip($"srun_{suffix}")) return $"srun_{suffix}";
-        if (_player.HasClip($"sgal_{suffix}")) return $"sgal_{suffix}";
         return _player.HasClip($"srun_{suffix}") ? $"srun_{suffix}" : $"swalk_{suffix}";
     }
 
