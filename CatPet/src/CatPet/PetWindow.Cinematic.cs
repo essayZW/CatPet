@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using System.Threading.Tasks;
 using System.Windows;
+using CatPet.Core;
 
 namespace CatPet;
 
@@ -19,11 +20,11 @@ namespace CatPet;
 /// </summary>
 public partial class PetWindow
 {
-    private const string CineIntroRight = "cin_intro";
-    private const string CineIntroLeft = "cin_intro_l";
-    private const string CineExitRight = "cin_outro";
-    private const string CineExitLeft = "cin_outro_l";
-    private const string CineExitText = "（拜拜了喵，明天见）";
+    // 素材名与时长都在 Core/CinematicTimeline.cs（有单测），这里只做别名
+    private const string CineIntroRight = CinematicTimeline.IntroRight;
+    private const string CineIntroLeft = CinematicTimeline.IntroLeft;
+    private const string CineExitRight = CinematicTimeline.ExitRight;
+    private const string CineExitLeft = CinematicTimeline.ExitLeft;
 
     private bool _exitAnimRunning;
     private bool _cineActive;                                  // 运镜进行中：屏蔽点击/拖拽
@@ -32,9 +33,9 @@ public partial class PetWindow
     private double RightEdge => SystemParameters.VirtualScreenLeft + SystemParameters.VirtualScreenWidth;
     private double LeftEdge => SystemParameters.VirtualScreenLeft;
 
-    /// <summary>离右边更近 → 用右侧那套（从右边进来 / 往右边走掉）。</summary>
+    /// <summary>离右边更近 → 用右侧那套（从右边进来 / 往右边走掉）。比较规则见 CinematicTimeline。</summary>
     private bool PreferRightSide =>
-        RightEdge - (Left + Width) <= Left - LeftEdge;
+        CinematicTimeline.PreferRightSide(Left - LeftEdge, RightEdge - (Left + Width));
 
     private string IntroClip => PreferRightSide ? CineIntroRight : CineIntroLeft;
     private string ExitClip => PreferRightSide ? CineExitRight : CineExitLeft;
@@ -42,19 +43,17 @@ public partial class PetWindow
     /// <summary>启动镜头：由远及近走进来，结束后进入站立待机。</summary>
     internal async Task PlayEntranceAsync()
     {
-        var clip = IntroClip;
-        if (!_player.HasClip(clip))
-            clip = clip == CineIntroRight ? CineIntroLeft : CineIntroRight;
-        if (!_player.HasClip(clip))
+        var clip = CinematicTimeline.ChooseClip(IntroClip, _player.HasClip);
+        if (clip is null)
             return;
 
         _cineActive = true;
         _standAction = true;                                  // 挡住姿态轮换/小动作
-        _followPausedUntil = DateTime.Now.AddSeconds(2.1);    // 只覆盖片长，播完立刻接待机/跟随，不留空档
+        _followPausedUntil = DateTime.Now.AddSeconds(CinematicTimeline.IntroFollowPauseSeconds);   // 只覆盖片长，播完立刻接待机/跟随
         _lastInteraction = DateTime.Now;
         _standing = true;
         // 从右边进来是朝左走，从左边进来是朝右走
-        _faceRight = clip == CineIntroLeft;
+        _faceRight = CinematicTimeline.FacingRightForIntro(clip);
 
         try
         {
@@ -85,26 +84,24 @@ public partial class PetWindow
             CloseInvite();
             _cineActive = true;
             _standAction = true;
-            _followPausedUntil = DateTime.Now.AddSeconds(6);   // 别让跟随帧把退场片顶掉
+            _followPausedUntil = DateTime.Now.AddSeconds(CinematicTimeline.ExitFollowPauseSeconds);   // 别让跟随帧把退场片顶掉
             _lastInteraction = DateTime.Now;
 
-            var clip = ExitClip;
-            if (!_player.HasClip(clip))
-                clip = clip == CineExitRight ? CineExitLeft : CineExitRight;
+            var clip = CinematicTimeline.ChooseClip(ExitClip, _player.HasClip);
 
-            if (_player.HasClip(clip))
+            if (clip is not null)
             {
-                // 气泡一直挂到猫消失（520ms 停顿 + 约 2.1s 走远 ≈ 2.6s）
-                Say(CineExitText, 3.2);
-                await Task.Delay(520);
+                // 气泡要挂到猫消失（停顿 + 片长 ≈ 2.5s，气泡 3.2s 覆盖得住，见 CinematicTimeline）
+                Say(CinematicTimeline.ExitText, CinematicTimeline.ExitBubbleSeconds);
+                await Task.Delay(CinematicTimeline.ExitBubbleDelayMs);
 
-                _faceRight = clip == CineExitLeft ? false : true;
+                _faceRight = CinematicTimeline.FacingRightForExit(clip);
                 try { await _player.PlayStandClipAsync(clip, 1); }
                 catch { /* 忽略 */ }
             }
             else
             {
-                await Task.Delay(150);
+                await Task.Delay(CinematicTimeline.ExitNoClipDelayMs);
             }
         }
         finally

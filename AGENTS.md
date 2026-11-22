@@ -291,7 +291,20 @@ Get-CimInstance Win32_Process -Filter "Name='dotnet.exe'" | Where-Object { $_.Co
 > 历史坑：原步态滞回方向是反的（在跑时切回走的阈值 165 比进入跑的 140 更宽松），
 > 速度在阈值附近会**每拍翻一次**。抽出来时改成 110/290，用例里钉住了。
 
-### 5.6 菜单/文案
+### 5.6 运镜（启动 / 退场）
+
+时间线与选边在 `Core/CinematicTimeline.cs`（有单测）：
+
+| 项 | 值 |
+| --- | --- |
+| 素材 | `cin_intro` / `cin_intro_l`、`cin_outro` / `cin_outro_l`（44 帧 × 45ms ≈ 1980ms） |
+| 选边 | 离哪边近用哪边（一样近取右）；首选缺素材自动用另一侧，两边都缺就不播 |
+| 朝向 | 从左边进来 → 朝右走；往右走掉 → 朝右（背对镜头） |
+| 开场让位 | 跟随暂停 **2.1s**（只覆盖片长，播完立刻待机/跟随） |
+| 退场让位 | 跟随暂停 **6.0s** |
+| 退场气泡 | 「（拜拜了喵，明天见）」**3.2s** ≥ 520ms 停顿 + 1980ms 片长（用例断言这个关系） |
+
+### 5.7 菜单/文案
 
 - 站立动作在右键菜单「站立动作」下，轮数写在元组里，改轮数要连菜单项一起改
 - 文案池（`StrollTexts`/`RunTexts`/`JumpMissTexts`…）在 `PetWindow.xaml.cs`，新增文案放进对应池
@@ -324,14 +337,19 @@ dotnet test CatPet\tests\CatPet.Tests\CatPet.Tests.csproj
     代际只能停自己那次、同方向改速度
   - `ChaseRules`（小游戏）：身体椭圆接触、抓取资格（在追+宽限+冷却）、看鼠标/到位分区、
     方向死区、目标速度与平滑、步态滞回、跳跃判定（跳/先走近/放弃）
-- 覆盖率现状（`dotnet test --collect:"XPlat Code Coverage"`）：**整个程序集约 5.2%**，
-  但 `PetLogic` 94%、`PetGates` 94%、`SleepMachine` 100%、`WalkController` 100%、`ChaseRules` 98%。
-  窗口/追逐/托盘/播放器仍是 0%（要抽编排状态才能测）
+  - `CinematicTimeline`（运镜）：选边、素材缺失时镜像兜底、朝向、开场/退场让位时长、
+    "气泡要盖住退场"的关系断言
+  - `Lps` / `PetConfig` / `PetLoader` / `GraphBook`（素材加载）：用临时目录造最小 MOD
+    （pet lps + info.lps + 空 png 文件）验证注册、A/B/C 拆分、模式回退（Ill 不回退）、
+    缺目录/未知类型进 Errors、单形象过滤、热区非法值回退
+- 覆盖率现状（`dotnet test --collect:"XPlat Code Coverage"`）：**整个程序集约 14%**，
+  其中 `PetLogic` 94%、`PetGates` 94%、`SleepMachine` 100%、`WalkController` 100%、`ChaseRules` 98%、`CinematicTimeline` 95%、`PetLoader` 97%/79%、`GraphBook` 84%、`GraphInfo` 88%、`Lps` 96%。
+  窗口/托盘/播放器仍是 0%（要抽编排状态才能测）
 - **写新规则时的顺序**：先在 `PetLogic` 里加纯函数 → 补用例 → 再让 `PetWindow` 调用它
 - 历史 bug 一律补一条回归用例（现在的"转身被跟随撤销""拖回边上不再回边"都是这么来的）
 
-不适合单测、靠测试钩子 + diag 验证的部分：WPF 渲染、窗口位移、托盘、运镜时序、
-素材加载（要真素材目录）。
+不适合单测、靠测试钩子 + diag 验证的部分：WPF 渲染、窗口位移、托盘、
+播放器内部的帧调度（DispatcherTimer + BitmapImage）。
 
 ---
 
